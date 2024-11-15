@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="hu">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Excel feldolgozás</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+</head>
+<body>
+    <h1>Excel feldolgozó</h1>
+    <input type="file" id="fileInput" accept=".xlsx, .xls" />
+    <div id="headerContainer"></div>
+    <button id="processButton" disabled>Exportálás</button>
+
+    <script>
+        document.getElementById('fileInput').addEventListener('change', handleFile);
+
+        let header = [];
+        let dataRows = [];
+
+        function handleFile(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+
+            const reader = new FileReader();
+            reader.onload = function (e) {
+                const data = new Uint8Array(e.target.result);
+                const workbook = XLSX.read(data, { type: 'array' });
+
+                // Az első munkalap feldolgozása
+                const sheetName = workbook.SheetNames[0];
+                const worksheet = workbook.Sheets[sheetName];
+                const jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
+
+                // Header és adatsorok elválasztása
+                if (jsonData.length > 0) {
+                    header = jsonData[0]; // Az első sor a header
+                    dataRows = jsonData.slice(1); // A többi sor adat
+                    renderHeaderSelection();
+                }
+            };
+
+            reader.readAsArrayBuffer(file);
+        }
+
+        function renderHeaderSelection() {
+            const container = document.getElementById('headerContainer');
+            container.innerHTML = '<p>Válassz oszlopokat exportáláshoz:</p>';
+
+            header.forEach((column, index) => {
+                const label = document.createElement('label');
+                label.style.marginRight = '10px';
+
+                const checkbox = document.createElement('input');
+                checkbox.type = 'checkbox';
+                checkbox.value = index;
+                checkbox.checked = true;
+
+                label.appendChild(checkbox);
+                label.appendChild(document.createTextNode(` ${column}`));
+                container.appendChild(label);
+            });
+
+            document.getElementById('processButton').disabled = false;
+        }
+
+        document.getElementById('processButton').addEventListener('click', processData);
+
+        function processData() {
+            const selectedColumns = Array.from(
+                document.querySelectorAll('#headerContainer input:checked')
+            ).map(input => parseInt(input.value));
+
+            selectedColumns.forEach(columnIndex => {
+                const columnName = header[columnIndex];
+                const columnData = dataRows.map(row => [row[columnIndex] || '']);
+
+                // Új munkafüzet generálása
+                const newWorkbook = XLSX.utils.book_new();
+                const newSheet = XLSX.utils.aoa_to_sheet([[columnName], ...columnData]);
+
+                XLSX.utils.book_append_sheet(newWorkbook, newSheet, 'Adatok');
+                XLSX.writeFile(newWorkbook, `${columnName}.xlsx`);
+            });
+
+            alert('Az oszlopok exportálása kész!');
+        }
+    </script>
+</body>
+</html>

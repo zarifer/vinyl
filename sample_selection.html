@@ -1,0 +1,602 @@
+<!DOCTYPE html>
+<html lang="hu">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Sample Selection</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.17.0/xlsx.full.min.js"></script>
+    <style>
+      body {
+        font-family: Arial, sans-serif;
+        background-color: #f4f4f4;
+        color: #333;
+        margin: 0;
+        padding: 20px;
+      }
+
+      h1 {
+        text-align: center;
+        color: #0056b3;
+      }
+
+      .navbar {
+        background-color: #0056b3;
+        padding: 10px;
+        text-align: center;
+      }
+
+      .navbar a {
+        color: white;
+        padding: 14px 20px;
+        text-decoration: none;
+        font-size: 1em;
+        margin: 0 10px;
+      }
+
+      .navbar a:hover {
+        background-color: #003d80;
+        border-radius: 4px;
+      }
+
+      .container {
+        max-width: 600px;
+        margin: auto;
+        padding: 20px;
+        background: white;
+        border-radius: 8px;
+        box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+      }
+
+      input[type="file"],
+      select,
+      button {
+        width: 100%;
+        padding: 10px;
+        margin: 10px 0;
+        border: 1px solid #ddd;
+        border-radius: 4px;
+        box-sizing: border-box;
+        transition: border-color 0.3s;
+      }
+
+      input[type="file"]:hover,
+      select:hover,
+      button:hover {
+        border-color: #0056b3;
+      }
+
+      button {
+        background-color: #0056b3;
+        color: white;
+        border: none;
+        cursor: pointer;
+      }
+
+      button:disabled {
+        background-color: #ccc;
+        cursor: not-allowed;
+      }
+
+      label {
+        font-weight: bold;
+        margin-top: 10px;
+      }
+
+      .checkbox-group {
+        margin: 10px 0;
+        padding: 10px;
+        border: 1px solid #ddd;
+        border-radius: 4px;
+        background: #f9f9f9;
+      }
+
+      .checkbox-group div {
+        margin: 5px 0;
+      }
+
+      .footer {
+        text-align: center;
+        margin-top: 20px;
+        font-size: 0.9em;
+        color: #777;
+      }
+
+      #preview {
+        margin-top: 20px;
+        padding: 10px;
+        border: 1px solid #0056b3;
+        border-radius: 4px;
+        background: #e7f3ff;
+        overflow-x: auto;
+      }
+
+      #preview table {
+        width: 100%;
+        border-collapse: collapse;
+      }
+
+      #preview th,
+      #preview td {
+        border: 1px solid #0056b3;
+        padding: 8px;
+        text-align: left;
+      }
+
+      #preview th {
+        background-color: #0056b3;
+        color: white;
+      }
+    </style>
+  </head>
+
+  <body>
+    <div class="navbar">
+      <a href="sample_selection.html">Excel Feldolgozó</a>
+      <a href="calculation_helper.html">Egyéb Oldal</a>
+    </div>
+
+    <div class="container">
+      <h1>Excel Feldolgozó</h1>
+      <input type="file" id="excelFileInput" accept=".xlsx, .xls" />
+      <button onclick="readExcel()">Fájl beolvasása</button>
+
+      <label for="headerSelect"
+        >Válassza ki az első szűrni kívánt fejlécet:</label
+      >
+      <select id="headerSelect" disabled>
+        <option value="" selected disabled>Válasszon egy fejlécet</option>
+      </select>
+
+      <div id="valueList1" class="checkbox-group" style="display: none"></div>
+
+      <label for="headerSelect2"
+        >Válassza ki a második szűrni kívánt fejlécet:</label
+      >
+      <select id="headerSelect2" disabled>
+        <option value="" selected disabled>Válasszon egy fejlécet</option>
+      </select>
+
+      <div id="valueList2" class="checkbox-group" style="display: none"></div>
+
+      <label for="headerSelect3"
+        >Válassza ki a harmadik szűrni kívánt fejlécet:</label
+      >
+      <select id="headerSelect3" disabled>
+        <option value="" selected disabled>Válasszon egy fejlécet</option>
+      </select>
+
+      <div id="valueList3" class="checkbox-group" style="display: none"></div>
+
+      <button id="processButton" disabled onclick="processFilteredExcel()">
+        Szűrt adatok letöltése
+      </button>
+      <button onclick="clearFile()">Törlés</button>
+
+      <div id="preview">
+        <div id="previewContent">Itt megjelennek a szűrt adatok.</div>
+      </div>
+    </div>
+
+    <div class="footer">
+      <p>© 2024. Minden jog fenntartva.</p>
+    </div>
+
+    <script>
+      let jsonData = [];
+      let selectedValues1 = [];
+      let selectedValues2 = [];
+      let selectedValues3 = [];
+
+      function readExcel() {
+        const fileInput = document.getElementById("excelFileInput");
+        const file = fileInput.files[0];
+
+        const reader = new FileReader();
+        reader.onload = function (e) {
+          const data = new Uint8Array(e.target.result);
+          const workbook = XLSX.read(data, { type: "array" });
+          const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
+
+          // Beolvasás JSON formátumba a cellaformátumokkal
+          jsonData = XLSX.utils.sheet_to_json(firstSheet, {
+            header: 1,
+            raw: false, // Használja a cellák formázott értékeit
+          });
+
+          // Dátumok átkonvertálása: manuálisan végigmegyünk minden cellán
+          jsonData = jsonData.map((row, rowIndex) => {
+            return row.map((cell, cellIndex) => {
+              // Csak akkor próbáljuk meg konvertálni, ha az első sort már átléptük, vagyis nem a fejlécsorban vagyunk
+              if (rowIndex > 0 && typeof cell === "string") {
+                // Próbáljuk meg dátumként értelmezni az adott cellát
+                const date = Date.parse(cell);
+                if (!isNaN(date)) {
+                  return new Date(date).toLocaleDateString("hu-HU"); // Formázzuk magyar dátumformátumban
+                }
+              }
+              return cell;
+            });
+          });
+
+          initializeHeaders();
+          document.getElementById("processButton").disabled = false;
+        };
+        reader.readAsArrayBuffer(file);
+      }
+
+      function initializeHeaders() {
+        const headers = jsonData[0];
+        const headerSelect = document.getElementById("headerSelect");
+        const headerSelect2 = document.getElementById("headerSelect2");
+        const headerSelect3 = document.getElementById("headerSelect3");
+
+        headerSelect.innerHTML =
+          '<option value="" selected disabled>Válasszon egy fejlécet</option>';
+        headerSelect2.innerHTML =
+          '<option value="" selected disabled>Válasszon egy fejlécet</option>';
+        headerSelect3.innerHTML =
+          '<option value="" selected disabled>Válasszon egy fejlécet</option>';
+
+        headers.forEach((header, index) => {
+          headerSelect.innerHTML += `<option value="${index}">${header}</option>`;
+          headerSelect2.innerHTML += `<option value="${index}">${header}</option>`;
+          headerSelect3.innerHTML += `<option value="${index}">${header}</option>`;
+        });
+
+        headerSelect.disabled = false;
+        headerSelect2.disabled = false;
+        headerSelect3.disabled = false;
+      }
+
+      function generateDates() {
+        const selectedHeaderIndex = parseInt(
+          document.getElementById("headerSelect3").value
+        );
+        const valueList3 = document.getElementById("valueList3");
+        valueList3.innerHTML = "";
+        selectedValues3 = [];
+        valueList3.style.display = "block";
+
+        const valueMap = {};
+
+        // Ellenőrizzük a kiválasztott értékeket az első két szűrőből
+        const selected1 = selectedValues1.length > 0 ? selectedValues1 : null;
+        const selected2 = selectedValues2.length > 0 ? selectedValues2 : null;
+
+        jsonData.slice(1).forEach((row) => {
+          const key3 = row[selectedHeaderIndex];
+          const key1 =
+            row[parseInt(document.getElementById("headerSelect").value)];
+          const key2 =
+            row[parseInt(document.getElementById("headerSelect2").value)];
+
+          // Csak akkor adjuk hozzá a dátumot, ha a szűrőfeltételek teljesülnek
+          if (
+            key3 &&
+            (!selected1 || selected1.includes(key1)) &&
+            (!selected2 || selected2.includes(key2))
+          ) {
+            if (!valueMap[key3]) {
+              valueMap[key3] = [];
+            }
+            valueMap[key3].push(row);
+          }
+        });
+
+        // Minden kiválasztott dátumból csak egy eseményt választunk ki véletlenszerűen
+        const uniqueDates = Object.keys(valueMap);
+        uniqueDates.forEach((date) => {
+          const items = valueMap[date];
+          const randomItem = items[Math.floor(Math.random() * items.length)];
+
+          const listItem = document.createElement("div");
+          const checkbox = document.createElement("input");
+          checkbox.type = "checkbox";
+          checkbox.value = date;
+          checkbox.id = date;
+
+          checkbox.addEventListener("change", function () {
+            if (this.checked) {
+              selectedValues3.push(this.value);
+            } else {
+              selectedValues3 = selectedValues3.filter((v) => v !== this.value);
+            }
+            generatePreview(); // Generate preview on change
+          });
+
+          listItem.appendChild(checkbox);
+          const label = document.createElement("label");
+          label.htmlFor = date;
+          label.textContent = randomItem[selectedHeaderIndex]; // A véletlenszerűen kiválasztott dátum megjelenítése
+          listItem.appendChild(label);
+          valueList3.appendChild(listItem);
+        });
+      }
+      document
+        .getElementById("headerSelect")
+        .addEventListener("change", function () {
+          const selectedHeaderIndex = parseInt(this.value);
+          const valueList1 = document.getElementById("valueList1");
+          valueList1.innerHTML = "";
+          selectedValues1 = [];
+          valueList1.style.display = "block";
+
+          const valueSet = new Set();
+
+          jsonData.slice(1).forEach((row) => {
+            const key = row[selectedHeaderIndex];
+            if (key) {
+              valueSet.add(key);
+            }
+          });
+
+          valueSet.forEach((value) => {
+            const listItem = document.createElement("div");
+            const checkbox = document.createElement("input");
+            checkbox.type = "checkbox";
+            checkbox.value = value;
+            checkbox.addEventListener("change", function () {
+              if (this.checked) {
+                selectedValues1.push(this.value);
+              } else {
+                selectedValues1 = selectedValues1.filter(
+                  (v) => v !== this.value
+                );
+              }
+              generatePreview(); // Generate preview on change
+            });
+
+            listItem.appendChild(checkbox);
+            listItem.appendChild(document.createTextNode(value));
+            valueList1.appendChild(listItem);
+          });
+        });
+
+      document
+        .getElementById("headerSelect2")
+        .addEventListener("change", function () {
+          const selectedHeaderIndex = parseInt(this.value);
+          const valueList2 = document.getElementById("valueList2");
+          valueList2.innerHTML = "";
+          selectedValues2 = [];
+          valueList2.style.display = "block";
+
+          const valueSet = new Set();
+
+          jsonData.slice(1).forEach((row) => {
+            const key = row[selectedHeaderIndex];
+            if (key) {
+              valueSet.add(key);
+            }
+          });
+
+          valueSet.forEach((value) => {
+            const listItem = document.createElement("div");
+            const checkbox = document.createElement("input");
+            checkbox.type = "checkbox";
+            checkbox.value = value;
+            checkbox.addEventListener("change", function () {
+              if (this.checked) {
+                selectedValues2.push(this.value);
+              } else {
+                selectedValues2 = selectedValues2.filter(
+                  (v) => v !== this.value
+                );
+              }
+              generatePreview(); // Generate preview on change
+            });
+
+            listItem.appendChild(checkbox);
+            listItem.appendChild(document.createTextNode(value));
+            valueList2.appendChild(listItem);
+          });
+        });
+
+      document
+        .getElementById("headerSelect3")
+        .addEventListener("change", function () {
+          const selectedHeaderIndex = parseInt(this.value);
+          const valueList3 = document.getElementById("valueList3");
+          valueList3.innerHTML = "";
+          selectedValues3 = [];
+          valueList3.style.display = "block";
+
+          const valueSet = new Set();
+
+          // Csak azok a dátumok, amelyek megfelelnek az első két szűrőnek
+          const selected1 = selectedValues1.length > 0 ? selectedValues1 : null;
+          const selected2 = selectedValues2.length > 0 ? selectedValues2 : null;
+
+          jsonData.slice(1).forEach((row) => {
+            const key3 = row[selectedHeaderIndex];
+            const key1 =
+              row[parseInt(document.getElementById("headerSelect").value)];
+            const key2 =
+              row[parseInt(document.getElementById("headerSelect2").value)];
+
+            if (
+              key3 &&
+              (!selected1 || selected1.includes(key1)) &&
+              (!selected2 || selected2.includes(key2))
+            ) {
+              valueSet.add(key3);
+            }
+          });
+
+          valueSet.forEach((value) => {
+            const listItem = document.createElement("div");
+            const checkbox = document.createElement("input");
+            checkbox.type = "checkbox";
+            checkbox.value = value;
+            checkbox.id = value;
+
+            checkbox.addEventListener("change", function () {
+              if (this.checked) {
+                selectedValues3.push(this.value);
+              } else {
+                selectedValues3 = selectedValues3.filter(
+                  (v) => v !== this.value
+                );
+              }
+              checkProcessButtonState();
+              generatePreview(); // Generate preview on change
+            });
+
+            listItem.appendChild(checkbox);
+            const label = document.createElement("label");
+            label.htmlFor = value;
+            label.textContent = value;
+            listItem.appendChild(label);
+            valueList3.appendChild(listItem);
+          });
+
+          checkProcessButtonState();
+        });
+
+      function generatePreview() {
+        const uniqueDates = {}; // Új objektum a dátum típusú oszlophoz
+
+        const filteredData = jsonData.filter((row) => {
+          const match1 =
+            selectedValues1.length === 0 ||
+            selectedValues1.includes(
+              row[parseInt(document.getElementById("headerSelect").value)]
+            );
+          const match2 =
+            selectedValues2.length === 0 ||
+            selectedValues2.includes(
+              row[parseInt(document.getElementById("headerSelect2").value)]
+            );
+          const match3 =
+            selectedValues3.length === 0 ||
+            selectedValues3.includes(
+              row[parseInt(document.getElementById("headerSelect3").value)]
+            );
+
+          const dateValue =
+            row[parseInt(document.getElementById("headerSelect3").value)];
+
+          // Ha már hozzáadtuk ezt a dátumot az objektumhoz, ugorjunk a következő iterációra
+          if (
+            match1 &&
+            match2 &&
+            match3 &&
+            dateValue &&
+            !uniqueDates[dateValue]
+          ) {
+            uniqueDates[dateValue] = row; // Csak az első találatot adjuk hozzá
+            return true;
+          }
+          return false;
+        });
+
+        const previewContent = document.getElementById("previewContent");
+        previewContent.innerHTML = ""; // Clear previous preview
+
+        if (filteredData.length > 0) {
+          const table = document.createElement("table");
+          const headerRow = document.createElement("tr");
+          jsonData[0].forEach((header) => {
+            const th = document.createElement("th");
+            th.innerText = header;
+            headerRow.appendChild(th);
+          });
+          table.appendChild(headerRow);
+
+          // Csak az első találatokat tartalmazó objektum értékeit adjuk hozzá
+          Object.values(uniqueDates).forEach((row) => {
+            const tr = document.createElement("tr");
+            row.forEach((cell) => {
+              const td = document.createElement("td");
+              td.innerText = cell;
+              tr.appendChild(td);
+            });
+            table.appendChild(tr);
+          });
+
+          previewContent.appendChild(table);
+        } else {
+          previewContent.innerText = "Nincs találat a szűrés alapján.";
+        }
+      }
+
+      function checkProcessButtonState() {
+        const processButton = document.getElementById("processButton");
+        processButton.disabled =
+          selectedValues1.length === 0 ||
+          selectedValues2.length === 0 ||
+          selectedValues3.length === 0;
+      }
+      function processFilteredExcel() {
+        // Egyedi dátumok nyilvántartása az első találat szerint
+        const uniqueDates = {};
+
+        // Szűrt adatok létrehozása a felhasználó által kiválasztott szűrési feltételek alapján
+        const filteredData = jsonData.filter((row, rowIndex) => {
+          if (rowIndex === 0) return true; // Az első sor a fejléc
+
+          const match1 =
+            selectedValues1.length === 0 ||
+            selectedValues1.includes(
+              row[parseInt(document.getElementById("headerSelect").value)]
+            );
+          const match2 =
+            selectedValues2.length === 0 ||
+            selectedValues2.includes(
+              row[parseInt(document.getElementById("headerSelect2").value)]
+            );
+          const match3 =
+            selectedValues3.length === 0 ||
+            selectedValues3.includes(
+              row[parseInt(document.getElementById("headerSelect3").value)]
+            );
+
+          const dateValue =
+            row[parseInt(document.getElementById("headerSelect3").value)];
+
+          // Csak az első találatot adjuk hozzá a `uniqueDates` objektumhoz
+          if (
+            match1 &&
+            match2 &&
+            match3 &&
+            dateValue &&
+            !uniqueDates[dateValue]
+          ) {
+            uniqueDates[dateValue] = row; // Csak az első találatot tároljuk
+            return true;
+          }
+          return false;
+        });
+
+        // Excel munkafüzet és munkalap létrehozása
+        const wb = XLSX.utils.book_new();
+        const wsData = [jsonData[0]]; // A fejléc sor hozzáadása
+
+        // Egyedi dátumokat hozzáadjuk a munkalaphoz
+        Object.values(uniqueDates).forEach((row) => {
+          wsData.push(row);
+        });
+
+        // Az adatok munkalappá alakítása
+        const ws = XLSX.utils.aoa_to_sheet(wsData);
+        XLSX.utils.book_append_sheet(wb, ws, "Szűrt Adatok");
+
+        // Fájl mentése Excel formátumban
+        XLSX.writeFile(wb, "szurt_adatok.xlsx");
+      }
+
+      function clearFile() {
+        document.getElementById("excelFileInput").value = "";
+        jsonData = [];
+        document.getElementById("headerSelect").disabled = true;
+        document.getElementById("headerSelect2").disabled = true;
+        document.getElementById("headerSelect3").disabled = true;
+        document.getElementById("processButton").disabled = true;
+        document.getElementById("valueList1").style.display = "none";
+        document.getElementById("valueList2").style.display = "none";
+        document.getElementById("valueList3").style.display = "none";
+        document.getElementById("previewContent").innerHTML =
+          "Itt megjelennek a szűrt adatok.";
+      }
+    </script>
+  </body>
+</html>

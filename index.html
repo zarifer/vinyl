@@ -1,0 +1,497 @@
+<!DOCTYPE html>
+<html lang="hu">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Sample Selection</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.17.0/xlsx.full.min.js"></script>
+    <style>
+      body {
+        font-family: Arial, sans-serif;
+        background-color: #f4f4f4;
+        color: #333;
+        margin: 0;
+        padding: 20px;
+      }
+
+      h1 {
+        text-align: center;
+        color: #0056b3;
+      }
+
+      .navbar {
+        background-color: #0056b3;
+        padding: 10px;
+        text-align: center;
+      }
+
+      .navbar a {
+        color: white;
+        padding: 14px 20px;
+        text-decoration: none;
+        font-size: 1em;
+        margin: 0 10px;
+      }
+
+      .navbar a:hover {
+        background-color: #003d80;
+        border-radius: 4px;
+      }
+
+      .container {
+        max-width: 600px;
+        margin: auto;
+        padding: 20px;
+        background: white;
+        border-radius: 8px;
+        box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+      }
+
+      input[type="file"],
+      input[type="number"],
+      select,
+      button {
+        width: 100%;
+        padding: 10px;
+        margin: 10px 0;
+        border: 1px solid #ddd;
+        border-radius: 4px;
+        box-sizing: border-box;
+        transition: border-color 0.3s;
+      }
+
+      input[type="file"]:hover,
+      input[type="number"]:hover,
+      select:hover,
+      button:hover {
+        border-color: #0056b3;
+      }
+
+      button {
+        background-color: #0056b3;
+        color: white;
+        border: none;
+        cursor: pointer;
+      }
+
+      button:disabled {
+        background-color: #ccc;
+        cursor: not-allowed;
+      }
+
+      label {
+        font-weight: bold;
+        margin-top: 10px;
+      }
+
+      .checkbox-group {
+        margin: 10px 0;
+        padding: 10px;
+        border: 1px solid #ddd;
+        border-radius: 4px;
+        background: #f9f9f9;
+      }
+
+      .checkbox-group div {
+        margin: 5px 0;
+      }
+
+      .footer {
+        text-align: center;
+        margin-top: 20px;
+        font-size: 0.9em;
+        color: #777;
+      }
+    </style>
+  </head>
+
+  <body>
+    <div class="navbar">
+      <a href="index.html">Excel Feldolgozó</a>
+      <a href="calculation_helper.html">Egyéb Oldal</a>
+    </div>
+
+    <div class="container">
+      <h1>Excel Feldolgozó</h1>
+      <input type="file" id="excelFileInput" accept=".xlsx, .xls" />
+      <button onclick="readExcel()">Fájl beolvasása</button>
+
+      <label for="headerSelect"
+        >Válassza ki az első szűrni kívánt fejlécet:</label
+      >
+      <select id="headerSelect" disabled>
+        <option value="" selected disabled>Válasszon egy fejlécet</option>
+      </select>
+
+      <div id="valueList1" class="checkbox-group" style="display: none"></div>
+
+      <label for="headerSelect2"
+        >Válassza ki a második szűrni kívánt fejlécet:</label
+      >
+      <select id="headerSelect2" disabled>
+        <option value="" selected disabled>Válasszon egy fejlécet</option>
+      </select>
+
+      <div id="valueList2" class="checkbox-group" style="display: none"></div>
+
+      <label for="headerSelect3"
+        >Válassza ki a harmadik szűrni kívánt fejlécet:</label
+      >
+      <select id="headerSelect3" disabled>
+        <option value="" selected disabled>Válasszon egy fejlécet</option>
+      </select>
+
+      <div id="valueList3" class="checkbox-group" style="display: none"></div>
+
+      <button onclick="processFilteredExcel()" disabled id="processButton">
+        Szűrt fájl letöltése
+      </button>
+      <button onclick="clearFile()">Minden törlése</button>
+
+      <div class="footer">&copy; 2024 Excel Feldolgozó</div>
+    </div>
+
+    <script>
+      let jsonData = [];
+      let selectedValues1 = [];
+      let selectedValues2 = [];
+      let selectedValues3 = [];
+
+      function readExcel() {
+        const fileInput = document.getElementById("excelFileInput");
+        const file = fileInput.files[0];
+
+        if (!file) {
+          alert("Kérjük, válasszon egy Excel fájlt!");
+          return;
+        }
+
+        const reader = new FileReader();
+
+        reader.onload = function (e) {
+          const data = new Uint8Array(e.target.result);
+          const workbook = XLSX.read(data, { type: "array" });
+          const worksheet = workbook.Sheets[workbook.SheetNames[0]];
+          jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
+
+          const headers = jsonData[0];
+
+          const headerSelect = document.getElementById("headerSelect");
+          const headerSelect2 = document.getElementById("headerSelect2");
+          const headerSelect3 = document.getElementById("headerSelect3");
+          headerSelect.innerHTML = "";
+          headerSelect2.innerHTML = "";
+          headerSelect3.innerHTML = "";
+
+          headers.forEach((header, index) => {
+            if (header) {
+              const option = document.createElement("option");
+              option.value = index;
+              option.text = header;
+              headerSelect.appendChild(option);
+              headerSelect2.appendChild(option.cloneNode(true));
+              headerSelect3.appendChild(option.cloneNode(true));
+            }
+          });
+
+          headerSelect.disabled = false;
+          headerSelect2.disabled = false;
+          headerSelect3.disabled = false;
+        };
+
+        reader.readAsArrayBuffer(file);
+      }
+
+      function generateDates() {
+        const selectedHeaderIndex = parseInt(
+          document.getElementById("headerSelect3").value
+        );
+        const valueList3 = document.getElementById("valueList3");
+        valueList3.innerHTML = "";
+        selectedValues3 = [];
+        valueList3.style.display = "block";
+
+        const valueMap = {};
+
+        const selected1 = selectedValues1.length > 0 ? selectedValues1 : null;
+        const selected2 = selectedValues2.length > 0 ? selectedValues2 : null;
+
+        jsonData.slice(1).forEach((row) => {
+          const key3 = row[selectedHeaderIndex];
+          const key1 =
+            row[parseInt(document.getElementById("headerSelect").value)];
+          const key2 =
+            row[parseInt(document.getElementById("headerSelect2").value)];
+
+          // Csak akkor adjuk hozzá a dátumot, ha a szűrőfeltételek teljesülnek
+          if (
+            key3 &&
+            (!selected1 || selected1.includes(key1)) &&
+            (!selected2 || selected2.includes(key2))
+          ) {
+            if (!valueMap[key3]) {
+              valueMap[key3] = [];
+            }
+            valueMap[key3].push(row);
+          }
+        });
+
+        // Minden kiválasztott dátumból csak egy eseményt választunk ki véletlenszerűen
+        const uniqueDates = Object.keys(valueMap);
+        uniqueDates.forEach((date) => {
+          const items = valueMap[date];
+          const randomItem = items[Math.floor(Math.random() * items.length)];
+
+          const listItem = document.createElement("div");
+          const checkbox = document.createElement("input");
+          checkbox.type = "checkbox";
+          checkbox.value = date;
+          checkbox.id = date;
+
+          checkbox.addEventListener("change", function () {
+            if (this.checked) {
+              selectedValues3.push(this.value);
+            } else {
+              selectedValues3 = selectedValues3.filter((v) => v !== this.value);
+            }
+          });
+
+          listItem.appendChild(checkbox);
+          const label = document.createElement("label");
+          label.htmlFor = date;
+          label.textContent = randomItem[selectedHeaderIndex]; // A véletlenszerűen kiválasztott dátum megjelenítése
+          listItem.appendChild(label);
+          valueList3.appendChild(listItem);
+        });
+      }
+
+      // Első szűrési feltétel
+      document
+        .getElementById("headerSelect")
+        .addEventListener("change", function () {
+          const selectedHeaderIndex = parseInt(this.value);
+          const valueList1 = document.getElementById("valueList1");
+          valueList1.innerHTML = "";
+          selectedValues1 = [];
+          valueList1.style.display = "block";
+
+          const valueSet = new Set();
+
+          jsonData.slice(1).forEach((row) => {
+            const key = row[selectedHeaderIndex];
+            if (key) {
+              valueSet.add(key);
+            }
+          });
+
+          valueSet.forEach((value) => {
+            const listItem = document.createElement("div");
+            const checkbox = document.createElement("input");
+            checkbox.type = "checkbox";
+            checkbox.value = value;
+            checkbox.id = value;
+
+            checkbox.addEventListener("change", function () {
+              if (this.checked) {
+                selectedValues1.push(this.value);
+              } else {
+                selectedValues1 = selectedValues1.filter(
+                  (v) => v !== this.value
+                );
+              }
+              checkProcessButtonState(); // Ellenőrizzük a gomb állapotát
+            });
+
+            listItem.appendChild(checkbox);
+            const label = document.createElement("label");
+            label.htmlFor = value;
+            label.textContent = value;
+            listItem.appendChild(label);
+            valueList1.appendChild(listItem);
+          });
+
+          checkProcessButtonState(); // Ellenőrizzük a gomb állapotát
+        });
+
+      // Második szűrési feltétel
+      document
+        .getElementById("headerSelect2")
+        .addEventListener("change", function () {
+          const selectedHeaderIndex = parseInt(this.value);
+          const valueList2 = document.getElementById("valueList2");
+          valueList2.innerHTML = "";
+          selectedValues2 = [];
+          valueList2.style.display = "block";
+
+          const valueSet = new Set();
+
+          jsonData.slice(1).forEach((row) => {
+            const key = row[selectedHeaderIndex];
+            if (key) {
+              valueSet.add(key);
+            }
+          });
+
+          valueSet.forEach((value) => {
+            const listItem = document.createElement("div");
+            const checkbox = document.createElement("input");
+            checkbox.type = "checkbox";
+            checkbox.value = value;
+            checkbox.id = value;
+
+            checkbox.addEventListener("change", function () {
+              if (this.checked) {
+                selectedValues2.push(this.value);
+              } else {
+                selectedValues2 = selectedValues2.filter(
+                  (v) => v !== this.value
+                );
+              }
+              checkProcessButtonState(); // Ellenőrizzük a gomb állapotát
+            });
+
+            listItem.appendChild(checkbox);
+            const label = document.createElement("label");
+            label.htmlFor = value;
+            label.textContent = value;
+            listItem.appendChild(label);
+            valueList2.appendChild(listItem);
+          });
+
+          checkProcessButtonState(); // Ellenőrizzük a gomb állapotát
+        });
+
+      function checkProcessButtonState() {
+        const processButton = document.getElementById("processButton");
+        const generateButton = document.getElementById("generateButton");
+
+        // Enable or disable buttons based on selected values
+        processButton.disabled =
+          selectedValues1.length === 0 ||
+          selectedValues2.length === 0 ||
+          selectedValues3.length === 0;
+        generateButton.disabled =
+          !document.getElementById("headerSelect3").value ||
+          (selectedValues1.length === 0 && selectedValues2.length === 0);
+      }
+
+      // Harmadik szűrési feltétel
+      document
+        .getElementById("headerSelect3")
+        .addEventListener("change", function () {
+          const selectedHeaderIndex = parseInt(this.value);
+          const valueList3 = document.getElementById("valueList3");
+          valueList3.innerHTML = "";
+          selectedValues3 = [];
+          valueList3.style.display = "block";
+
+          const valueSet = new Set();
+
+          // Csak azok a dátumok, amelyek megfelelnek az első két szűrőnek
+          const selected1 = selectedValues1.length > 0 ? selectedValues1 : null;
+          const selected2 = selectedValues2.length > 0 ? selectedValues2 : null;
+
+          jsonData.slice(1).forEach((row) => {
+            const key3 = row[selectedHeaderIndex];
+            const key1 =
+              row[parseInt(document.getElementById("headerSelect").value)];
+            const key2 =
+              row[parseInt(document.getElementById("headerSelect2").value)];
+
+            if (
+              key3 &&
+              (!selected1 || selected1.includes(key1)) &&
+              (!selected2 || selected2.includes(key2))
+            ) {
+              valueSet.add(key3);
+            }
+          });
+
+          valueSet.forEach((value) => {
+            const listItem = document.createElement("div");
+            const checkbox = document.createElement("input");
+            checkbox.type = "checkbox";
+            checkbox.value = value;
+            checkbox.id = value;
+
+            checkbox.addEventListener("change", function () {
+              if (this.checked) {
+                selectedValues3.push(this.value);
+              } else {
+                selectedValues3 = selectedValues3.filter(
+                  (v) => v !== this.value
+                );
+              }
+              checkProcessButtonState();
+            });
+
+            listItem.appendChild(checkbox);
+            const label = document.createElement("label");
+            label.htmlFor = value;
+            label.textContent = value;
+            listItem.appendChild(label);
+            valueList3.appendChild(listItem);
+          });
+
+          checkProcessButtonState();
+        });
+
+      function checkProcessButtonState() {
+        const processButton = document.getElementById("processButton");
+        processButton.disabled =
+          selectedValues1.length === 0 ||
+          selectedValues2.length === 0 ||
+          selectedValues3.length === 0;
+      }
+
+      function processFilteredExcel() {
+        const filteredData = [];
+        const uniqueDates = new Set(selectedValues3); // A kiválasztott dátumok egyedi halmaza
+
+        uniqueDates.forEach((date) => {
+          const row = jsonData.find((row, index) => {
+            if (index === 0) return false; // Az első sor a fejléc, azt nem vizsgáljuk
+            return (
+              selectedValues1.includes(
+                row[parseInt(document.getElementById("headerSelect").value)]
+              ) &&
+              selectedValues2.includes(
+                row[parseInt(document.getElementById("headerSelect2").value)]
+              ) &&
+              row[parseInt(document.getElementById("headerSelect3").value)] ===
+                date // Csak az adott dátumot keresem
+            );
+          });
+          if (row) {
+            filteredData.push(row); // Csak az első megfelelő sort adjuk hozzá
+          }
+        });
+
+        // A fejléc hozzáadása a filteredData-hoz
+        filteredData.unshift(jsonData[0]);
+
+        const worksheet = XLSX.utils.aoa_to_sheet(filteredData);
+        const workbook = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(workbook, worksheet, "Filtered Data");
+        XLSX.writeFile(workbook, "filtered_data.xlsx");
+      }
+
+      function clearFile() {
+        document.getElementById("excelFileInput").value = "";
+        document.getElementById("headerSelect").selectedIndex = 0;
+        document.getElementById("headerSelect2").selectedIndex = 0;
+        document.getElementById("headerSelect3").selectedIndex = 0;
+        jsonData = [];
+        selectedValues1 = [];
+        selectedValues2 = [];
+        selectedValues3 = [];
+        document.getElementById("valueList1").innerHTML = "";
+        document.getElementById("valueList1").style.display = "none";
+        document.getElementById("valueList2").innerHTML = "";
+        document.getElementById("valueList2").style.display = "none";
+        document.getElementById("valueList3").innerHTML = "";
+        document.getElementById("valueList3").style.display = "none";
+        document.getElementById("processButton").disabled = true;
+      }
+    </script>
+  </body>
+</html>

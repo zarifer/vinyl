@@ -1,0 +1,411 @@
+<!DOCTYPE html>
+<html lang="hu">
+
+<head>
+    <meta charset="UTF-8">
+    <title>Kalkulátorok</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.17.0/xlsx.full.min.js"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f4f4f4;
+            color: #333;
+            margin: 0;
+            padding: 20px;
+        }
+
+        h1,
+        h2 {
+            text-align: center;
+            color: #0056b3;
+        }
+
+        .navbar {
+            background-color: #0056b3;
+            padding: 10px;
+            text-align: center;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+        }
+
+        .navbar a {
+            color: white;
+            padding: 14px 20px;
+            text-decoration: none;
+            font-size: 1em;
+            margin: 0 10px;
+            transition: background-color 0.3s, transform 0.3s;
+        }
+
+        .navbar a:hover {
+            background-color: #003d80;
+            border-radius: 4px;
+            transform: scale(1.05);
+        }
+
+        .container {
+            max-width: 600px;
+            margin: auto;
+            padding: 20px;
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+        }
+
+        .calculator {
+            margin-top: 20px;
+            padding: 20px;
+            background-color: #fff;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+        }
+
+        input[type="file"],
+        button {
+            width: 100%;
+            padding: 10px;
+            margin: 10px 0;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            box-sizing: border-box;
+            transition: border-color 0.3s;
+        }
+
+        input[type="file"]:hover,
+        button:hover {
+            border-color: #0056b3;
+        }
+
+        button {
+            background-color: #0056b3;
+            color: white;
+            border: none;
+            cursor: pointer;
+            transition: background-color 0.3s, transform 0.3s;
+        }
+
+        button:hover {
+            background-color: #003d80;
+            transform: scale(1.05);
+        }
+
+        button:disabled {
+            background-color: #ccc;
+            cursor: not-allowed;
+        }
+
+        label {
+            font-weight: bold;
+            margin-top: 10px;
+        }
+
+        .result {
+            margin-top: 10px;
+            font-weight: bold;
+            color: #0056b3;
+            padding: 10px;
+            border: 1px solid #0056b3;
+            border-radius: 4px;
+            background-color: #e7f3ff;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="navbar">
+        <a href="sample_selection.html">Excel Feldolgozó</a>
+        <a href="calculation_helper.html">Egyéb Oldal</a>
+    </div>
+
+    <div class="container">
+        <h1>Kalkulátorok</h1>
+
+        <!-- Sorok számláló -->
+        <div class="calculator">
+            <h2>Sorok Számláló</h2>
+            <label for="rowCounterFileInput">Válassza ki az Excel fájlt:</label>
+            <input type="file" id="rowCounterFileInput" accept=".xlsx, .xls" />
+            <button onclick="countRows()">Sorok számlálása</button>
+            <div id="rowCountResult" class="result"></div>
+        </div>
+
+        <!-- Összehasonlító kalkulátor -->
+        <div class="calculator">
+            <h2>Összehasonlító Kalkulátor</h2>
+            <label for="rawFileInput">Válassza ki az eredeti (raw) Excel fájlt:</label>
+            <input type="file" id="rawFileInput" accept=".xlsx, .xls" />
+            <label for="filteredFileInput">Válassza ki a szűrt (filtered) Excel fájlt:</label>
+            <input type="file" id="filteredFileInput" accept=".xlsx, .xls" />
+            <button onclick="compareFiles()">Összehasonlítás</button>
+            <div id="compareResult" class="result"></div>
+        </div>
+
+<!-- Hónap kalkulátor -->
+<div class="calculator">
+    <h2>Hónap Kalkulátor</h2>
+    <label for="monthFileInput">Válassza ki az Excel fájlt:</label>
+    <input type="file" id="monthFileInput" accept=".xlsx, .xls" onchange="loadHeaders()" />
+
+    <label for="dateHeaderSelect">Válassza ki a dátumot tartalmazó oszlop nevét:</label>
+    <select id="dateHeaderSelect">
+        <option value="">-- Válasszon oszlopot --</option>
+    </select>
+
+    <label for="sampleSizeInput">Minta mérete:</label>
+    <input type="number" id="sampleSizeInput" value="25" min="1" />
+
+    <button onclick="calculateMonths()">Hónapok számolása</button>
+    <div id="monthCountResult" class="result"></div>
+        <!-- Eredmények letöltése -->
+            <button onclick="downloadResults()">Eredmények letöltése TXT-ként</button>
+        <!-- Clear All gomb -->
+        <button onclick="clearAll()">Összes törlése</button>
+    </div>
+
+    <script>
+        // Sorok számláló funkció
+        function countRows() {
+            const fileInput = document.getElementById('rowCounterFileInput');
+            const file = fileInput.files[0];
+
+            if (!file) {
+                alert("Kérjük, válasszon egy Excel fájlt!");
+                return;
+            }
+
+            const reader = new FileReader();
+            reader.onload = function (e) {
+                const data = new Uint8Array(e.target.result);
+                const workbook = XLSX.read(data, { type: 'array' });
+                const worksheet = workbook.Sheets[workbook.SheetNames[0]];
+                const jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
+
+                // Count filled rows
+                const rowCount = jsonData.filter(row => row.some(cell => cell !== undefined && cell !== null && cell !== '')).length;
+                document.getElementById('rowCountResult').textContent = `Kitöltött sorok száma: ${rowCount}`;
+            };
+
+            reader.readAsArrayBuffer(file);
+        }
+
+        // Összehasonlító kalkulátor funkció
+        function compareFiles() {
+            const rawFileInput = document.getElementById('rawFileInput');
+            const filteredFileInput = document.getElementById('filteredFileInput');
+
+            const rawFile = rawFileInput.files[0];
+            const filteredFile = filteredFileInput.files[0];
+
+            if (!rawFile || !filteredFile) {
+                alert("Kérjük, válassza ki mindkét Excel fájlt!");
+                return;
+            }
+
+            // Olvassuk be mindkét fájlt
+            const readerRaw = new FileReader();
+            const readerFiltered = new FileReader();
+
+            readerRaw.onload = function (eRaw) {
+                const rawData = new Uint8Array(eRaw.target.result);
+                const workbookRaw = XLSX.read(rawData, { type: 'array' });
+                const worksheetRaw = workbookRaw.Sheets[workbookRaw.SheetNames[0]];
+                const jsonDataRaw = XLSX.utils.sheet_to_json(worksheetRaw, { header: 1 });
+
+                readerFiltered.onload = function (eFiltered) {
+                    const filteredData = new Uint8Array(eFiltered.target.result);
+                    const workbookFiltered = XLSX.read(filteredData, { type: 'array' });
+                    const worksheetFiltered = workbookFiltered.Sheets[workbookFiltered.SheetNames[0]];
+                    const jsonDataFiltered = XLSX.utils.sheet_to_json(worksheetFiltered, { header: 1 });
+
+                    // Összehasonlítás
+                    const headers = jsonDataRaw[0];
+                    const compareResult = [];
+
+                    headers.forEach((header, index) => {
+                        const rawValues = [...new Set(jsonDataRaw.slice(1).map(row => row[index]).filter(Boolean))];
+                        const filteredValues = [...new Set(jsonDataFiltered.slice(1).map(row => row[index]).filter(Boolean))];
+
+                        // Ha az értékek azonosak
+                        if (rawValues.length === filteredValues.length && rawValues.every((val, i) => val === filteredValues[i])) {
+                            compareResult.push(`Oszlop: ${header} <br> <span>Azonos</span>`);
+                        } else {
+                            const displayRawValues = rawValues.length > 60 ? rawValues.slice(0, 60).join(", ") + ", (...!)" : rawValues.join(", ");
+                            const displayFilteredValues = filteredValues.length > 60 ? filteredValues.slice(0, 60).join(", ") + ", (...!)" : filteredValues.join(", ");
+
+                            compareResult.push(`Oszlop: ${header} <br> Eredeti értékek: ${displayRawValues} <br> Szűrt értékek: ${displayFilteredValues}`);
+                        }
+                    });
+
+                    document.getElementById('compareResult').innerHTML = compareResult.join("<hr>");
+                    // Stílusozzuk az "azonos" szöveget
+                    document.querySelectorAll('#compareResult span').forEach(span => {
+                        if (span.innerText === "Azonos") {
+                            span.style.color = 'green';
+                        }
+                    });
+                };
+
+                readerFiltered.readAsArrayBuffer(filteredFile);
+            };
+
+            readerRaw.readAsArrayBuffer(rawFile);
+        }
+
+  // Az oszlopnevek betöltése a fájl beolvasásakor
+    function loadHeaders() {
+        const fileInput = document.getElementById('monthFileInput');
+        const headerSelect = document.getElementById('dateHeaderSelect');
+        headerSelect.innerHTML = '<option value="">-- Válasszon oszlopot --</option>'; // Reset the select options
+
+        const file = fileInput.files[0];
+        if (!file) return;
+
+        const reader = new FileReader();
+        reader.onload = function (e) {
+            const data = new Uint8Array(e.target.result);
+            const workbook = XLSX.read(data, { type: 'array' });
+            const worksheet = workbook.Sheets[workbook.SheetNames[0]];
+            const jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
+
+            // Az első sor oszlopneveinek hozzáadása a lenyíló fülhöz
+            const headers = jsonData[0];
+            headers.forEach(header => {
+                headerSelect.innerHTML += `<option value="${header}">${header}</option>`;
+            });
+        };
+
+        reader.readAsArrayBuffer(file);
+    }
+
+    // Hónap kalkulátor funkció
+    function calculateMonths() {
+        const fileInput = document.getElementById('monthFileInput');
+        const headerName = document.getElementById('dateHeaderSelect').value;
+        const sampleSize = parseInt(document.getElementById('sampleSizeInput').value, 10);
+
+        if (!fileInput.files[0]) {
+            alert("Kérjük, válasszon egy Excel fájlt!");
+            return;
+        }
+
+        if (!headerName) {
+            alert("Kérjük, válasszon egy dátumot tartalmazó oszlopot!");
+            return;
+        }
+
+        const reader = new FileReader();
+        reader.onload = function (e) {
+            const data = new Uint8Array(e.target.result);
+            const workbook = XLSX.read(data, { type: 'array' });
+            const worksheet = workbook.Sheets[workbook.SheetNames[0]];
+            const jsonData = XLSX.utils.sheet_to_json(worksheet);
+
+            // Ellenőrizzük, hogy a megadott oszlop létezik
+            const dateColumn = jsonData.map(row => row[headerName]).filter(Boolean);
+            if (dateColumn.length === 0) {
+                alert("A megadott oszlop nem található vagy üres!");
+                return;
+            }
+
+            // Számoljuk meg a hónapokból származó sorokat
+            const monthCounts = {};
+            dateColumn.forEach(dateString => {
+                const date = new Date(dateString);
+                if (!isNaN(date)) {
+                    const month = date.toLocaleString('default', { month: 'long' });
+                    monthCounts[month] = (monthCounts[month] || 0) + 1;
+                }
+            });
+
+            // Kiválasztási arányok számítása
+            const totalRows = dateColumn.length;
+            const sampleResults = Object.entries(monthCounts).map(([month, count]) => {
+                return { month, count, requiredCount: 0 }; // Kezdetben 0 kiválasztott
+            });
+
+            // Ellenőrizzük, hogy a mintanagyság elegendő legyen
+            const totalMonths = sampleResults.length;
+
+            if (sampleSize < totalMonths) {
+                // Ha a mintanagyság kevesebb, mint a hónapok száma
+                // Kiválasztjuk a legtöbb sorral rendelkező hónapokat
+                sampleResults.sort((a, b) => b.count - a.count); // Legnagyobb sorok előre
+                for (let i = 0; i < sampleSize; i++) {
+                    sampleResults[i].requiredCount = 1; // Mindig 1 az összes hónapból
+                }
+            } else {
+                // Arányos elosztás, minimum 1 kiválasztás
+                let remaining = sampleSize;
+
+                // Minden hónapból 1 kiválasztás
+                sampleResults.forEach(monthData => {
+                    monthData.requiredCount = 1; // Mindig 1 az összes hónapból
+                    remaining--;
+                });
+
+                // Maradék kiválasztás
+                if (remaining > 0) {
+                    // A hónapokat a számuk szerint csökkentjük
+                    sampleResults.sort((a, b) => b.count - a.count); // Legnagyobb sorok előre
+                    for (let i = 0; i < remaining; i++) {
+                        sampleResults[i % totalMonths].requiredCount++; // Kiegészítjük az egyes hónapokat
+                    }
+                }
+            }
+
+            // Kimenet megjelenítése
+            const finalOutput = sampleResults.map(({ month, count, requiredCount }) => {
+                return `${month}: ${count} sor, szükséges kiválasztás: ${requiredCount}`;
+            }).join('<br>');
+
+            document.getElementById('monthCountResult').innerHTML = `<strong>Kiválasztott sorok:</strong><br>${finalOutput}`;
+        };
+
+        reader.readAsArrayBuffer(fileInput.files[0]);
+    }
+
+           // Eredmények letöltése TXT fájlként
+    function downloadResults() {
+        const resultsElement = document.getElementById('monthCountResult');
+
+        // Ellenőrizzük, hogy van-e tartalom az eredményben
+        if (!resultsElement.innerHTML.trim()) {
+            alert("Nincsenek elérhető eredmények a letöltéshez.");
+            return;
+        }
+
+        // Kivonjuk a hónapok és a szükséges kiválasztások szövegét
+        const results = resultsElement.innerHTML
+            .replace(/<strong>Kiválasztott sorok:<\/strong><br>/, '') // Eltávolítjuk a fejlécet
+            .replace(/<br>/g, '\n') // Az <br> tageket új sorokra cseréljük
+            .replace(/: /g, ': ') // A formázás (üres helyek) megtartása
+            .trim(); // Töröljük a felesleges szóközöket
+
+        // Létrehozunk egy Blob-ot az eredményekből
+        const blob = new Blob([results], { type: 'text/plain' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = 'eredmények.txt';
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+            }
+
+        // Clear All funkció
+        function clearAll() {
+            // Töröljük a file inputokat
+            document.getElementById('rowCounterFileInput').value = "";
+            document.getElementById('rawFileInput').value = "";
+            document.getElementById('filteredFileInput').value = "";
+            document.getElementById('monthFileInput').value = "";
+
+            // Töröljük az eredmény mezőket
+            document.getElementById('rowCountResult').textContent = "";
+            document.getElementById('compareResult').innerHTML = "";
+            document.getElementById('monthCountResult').innerHTML = "";
+        }
+    </script>
+</body>
+
+</html>

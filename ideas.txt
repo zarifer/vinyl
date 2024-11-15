@@ -1,0 +1,3 @@
+- Oldal gördülő, ha valamivel hosszabban nyílik meg egy lista
+- Javítani a dátum nézetet
+- Esetleg fancy desgint készíteni
