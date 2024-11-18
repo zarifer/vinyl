@@ -1,285 +1,210 @@
 <!DOCTYPE html>
 <html lang="hu">
-  <head>
-    <meta charset="UTF-8" />
-    <title>Delta kiválasztás</title>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.17.0/xlsx.full.min.js"></script>
-    <style>
-      body {
-        font-family: Arial, sans-serif;
-        background-color: #f4f4f4;
-        color: #333;
-        margin: 0;
-        padding: 20px;
-      }
-      h1 {
-        text-align: center;
-        color: #0056b3;
-      }
-      .container {
-        max-width: 600px;
-        margin: auto;
-        padding: 20px;
-        background: white;
-        border-radius: 8px;
-        box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
-      }
-      input[type="file"],
-      select,
-      button {
-        width: 100%;
-        padding: 10px;
-        margin: 10px 0;
-        border: 1px solid #ddd;
-        border-radius: 4px;
-      }
-      button {
-        background-color: #0056b3;
-        color: white;
-        border: none;
-        cursor: pointer;
-      }
-      label {
-        font-weight: bold;
-        margin-top: 10px;
-      }
-      .checkbox-group {
-        margin: 10px 0;
-        padding: 10px;
-        border: 1px solid #ddd;
-        border-radius: 4px;
-        background: #f9f9f9;
-      }
-    </style>
-  </head>
-  <body>
-    <div class="container">
-      <h1>Delta kiválasztás</h1>
-      <input type="file" id="excelFileInput" accept=".xlsx, .xls" />
-      <button onclick="readExcel()">Fájl beolvasása</button>
+<head>
+  <meta charset="UTF-8" />
+  <title>Két Excel összehasonlítása</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.17.0/xlsx.full.min.js"></script>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background-color: #f4f4f4;
+      color: #333;
+      margin: 0;
+      padding: 20px;
+    }
+    h1 {
+      text-align: center;
+      color: #0056b3;
+    }
+    .container {
+      max-width: 600px;
+      margin: auto;
+      padding: 20px;
+      background: white;
+      border-radius: 8px;
+      box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+    }
+    input[type="file"],
+    select,
+    button {
+      width: 100%;
+      padding: 10px;
+      margin: 10px 0;
+      border: 1px solid #ddd;
+      border-radius: 4px;
+    }
+    button {
+      background-color: #0056b3;
+      color: white;
+      border: none;
+      cursor: pointer;
+    }
+    button:disabled {
+      background-color: #ccc;
+      cursor: not-allowed;
+    }
+    label {
+      font-weight: bold;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>Két Excel összehasonlítása</h1>
+    <label for="excelFileInput1">Excel fájl 1:</label>
+    <input type="file" id="excelFileInput1" accept=".xlsx, .xls" />
 
-      <label for="headerSelect">Válassza ki a szűrni kívánt fejlécet:</label>
-      <select id="headerSelect" disabled>
-        <option value="" selected disabled>Válasszon egy fejlécet</option>
-      </select>
+    <label for="excelFileInput2">Excel fájl 2:</label>
+    <input type="file" id="excelFileInput2" accept=".xlsx, .xls" />
 
-      <div id="valueList" class="checkbox-group" style="display: none"></div>
+    <button onclick="loadExcelFiles()">Fájlok betöltése</button>
 
-      <button id="processButton" disabled onclick="processFilteredExcel()">
-        Adatok mentése
-      </button>
+    <label for="columnSelect1">Első oszlop:</label>
+    <select id="columnSelect1" disabled>
+      <option value="" selected disabled>Válasszon oszlopot</option>
+    </select>
+
+    <label for="columnSelect2">Második oszlop:</label>
+    <select id="columnSelect2" disabled>
+      <option value="" selected disabled>Válasszon oszlopot</option>
+    </select>
+
+    <button onclick="compareExcelFiles()" disabled>Összehasonlítás</button>
+    <div id="comparisonResult">
+      <p>Itt jelenik meg az összehasonlítás eredménye.</p>
     </div>
+    <button id="clearButton">Törlés</button>
+  </div>
 
-    <div class="container">
-      <h1>Két Excel Összehasonlítása</h1>
-      <label for="excelFileInput1">Excel fájl 1:</label>
-      <input type="file" id="excelFileInput1" accept=".xlsx, .xls" />
+  <script>
+    let jsonData1 = [];
+    let jsonData2 = [];
 
-      <label for="excelFileInput2">Excel fájl 2:</label>
-      <input type="file" id="excelFileInput2" accept=".xlsx, .xls" />
+    function loadExcelFiles() {
+      const fileInput1 = document.getElementById("excelFileInput1").files[0];
+      const fileInput2 = document.getElementById("excelFileInput2").files[0];
 
-      <button onclick="compareExcelFiles()">Összehasonlítás</button>
-      <div id="comparisonResult">
-        <p>Itt jelenik meg az összehasonlítás eredménye.</p>
-      </div>
-      <button id="clearButton">Törlés</button>
-    </div>
+      if (!fileInput1 || !fileInput2) {
+        alert("Töltsön fel két fájlt a betöltéshez!");
+        return;
+      }
 
-    <script>
-      let jsonData = [];
-      let selectedValues = [];
+      const reader1 = new FileReader();
+      const reader2 = new FileReader();
 
-      function readExcel() {
-        const fileInput = document.getElementById("excelFileInput");
-        const file = fileInput.files[0];
+      reader1.onload = function (e1) {
+        const data1 = new Uint8Array(e1.target.result);
+        const workbook1 = XLSX.read(data1, { type: "array" });
+        const sheet1 = workbook1.Sheets[workbook1.SheetNames[0]];
+        jsonData1 = XLSX.utils.sheet_to_json(sheet1, { header: 1 });
 
-        const reader = new FileReader();
-        reader.onload = function (e) {
-          const data = new Uint8Array(e.target.result);
-          const workbook = XLSX.read(data, { type: "array" });
-          const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
-          jsonData = XLSX.utils.sheet_to_json(firstSheet, { header: 1 });
+        reader2.onload = function (e2) {
+          const data2 = new Uint8Array(e2.target.result);
+          const workbook2 = XLSX.read(data2, { type: "array" });
+          const sheet2 = workbook2.Sheets[workbook2.SheetNames[0]];
+          jsonData2 = XLSX.utils.sheet_to_json(sheet2, { header: 1 });
 
-          initializeHeaders();
+          initializeColumnSelectors(jsonData1, jsonData2);
         };
-        reader.readAsArrayBuffer(file);
+
+        reader2.readAsArrayBuffer(fileInput2);
+      };
+
+      reader1.readAsArrayBuffer(fileInput1);
+    }
+
+    function initializeColumnSelectors(jsonData1, jsonData2) {
+      const columnSelect1 = document.getElementById("columnSelect1");
+      const columnSelect2 = document.getElementById("columnSelect2");
+      const compareButton = document.querySelector("button[onclick='compareExcelFiles()']");
+
+      const headers1 = jsonData1[0];
+      const headers2 = jsonData2[0];
+
+      columnSelect1.innerHTML =
+        '<option value="" selected disabled>Válasszon oszlopot</option>';
+      columnSelect2.innerHTML =
+        '<option value="" selected disabled>Válasszon oszlopot</option>';
+
+      headers1.forEach((header, index) => {
+        columnSelect1.innerHTML += `<option value="${index}">${header}</option>`;
+        columnSelect2.innerHTML += `<option value="${index}">${header}</option>`;
+      });
+
+      columnSelect1.disabled = false;
+      columnSelect2.disabled = false;
+      compareButton.disabled = false;
+    }
+
+    function compareExcelFiles() {
+      const col1Index = parseInt(document.getElementById("columnSelect1").value);
+      const col2Index = parseInt(document.getElementById("columnSelect2").value);
+
+      if (isNaN(col1Index) || isNaN(col2Index)) {
+        alert("Válasszon ki két oszlopot az összehasonlításhoz!");
+        return;
       }
 
-      function initializeHeaders() {
-        const headers = jsonData[0];
-        const headerSelect = document.getElementById("headerSelect");
-        headerSelect.innerHTML =
-          '<option value="" selected disabled>Válasszon egy fejlécet</option>';
-        headers.forEach((header, index) => {
-          headerSelect.innerHTML += `<option value="${index}">${header}</option>`;
-        });
-        headerSelect.disabled = false;
+      const uniqueInFirst = [];
+      const uniqueInSecond = [];
 
-        headerSelect.addEventListener("change", generateValueList);
-      }
+      const data2Set = new Set(
+        jsonData2.slice(1).map((row) => `${row[col1Index]}|${row[col2Index]}`)
+      );
 
-      function generateValueList() {
-        const selectedHeaderIndex = parseInt(
-          document.getElementById("headerSelect").value
-        );
-        const valueList = document.getElementById("valueList");
-        valueList.innerHTML = "";
-        selectedValues = [];
-        valueList.style.display = "block";
-
-        const valueSet = new Set();
-        jsonData.slice(1).forEach((row) => {
-          const value = row[selectedHeaderIndex];
-          if (value) valueSet.add(value);
-        });
-
-        valueSet.forEach((value) => {
-          const listItem = document.createElement("div");
-          const checkbox = document.createElement("input");
-          checkbox.type = "checkbox";
-          checkbox.value = value;
-          checkbox.addEventListener("change", function () {
-            if (this.checked) {
-              selectedValues.push(this.value);
-            } else {
-              selectedValues = selectedValues.filter((v) => v !== this.value);
-            }
-            document.getElementById("processButton").disabled =
-              selectedValues.length === 0;
-          });
-
-          listItem.appendChild(checkbox);
-          listItem.appendChild(document.createTextNode(value));
-          valueList.appendChild(listItem);
-        });
-      }
-
-      function processFilteredExcel() {
-        const selectedHeaderIndex = parseInt(
-          document.getElementById("headerSelect").value
-        );
-
-        selectedValues.forEach((value) => {
-          const filteredData = jsonData.filter((row, rowIndex) => {
-            if (rowIndex === 0) return true; // Fejléc
-            return row[selectedHeaderIndex] === value;
-          });
-
-          const wb = XLSX.utils.book_new();
-          const ws = XLSX.utils.aoa_to_sheet(filteredData);
-          XLSX.utils.book_append_sheet(wb, ws, "Adatok");
-
-          XLSX.writeFile(wb, `${value}.xlsx`);
-        });
-      }
-
-      function compareExcelFiles() {
-        const fileInput1 = document.getElementById("excelFileInput1").files[0];
-        const fileInput2 = document.getElementById("excelFileInput2").files[0];
-
-        if (!fileInput1 || !fileInput2) {
-          alert("Töltsön fel két fájlt az összehasonlításhoz!");
-          return;
+      jsonData1.slice(1).forEach((row) => {
+        const key = `${row[col1Index]}|${row[col2Index]}`;
+        if (!data2Set.has(key)) {
+          uniqueInFirst.push(row);
         }
+      });
 
-        const reader1 = new FileReader();
-        const reader2 = new FileReader();
+      const data1Set = new Set(
+        jsonData1.slice(1).map((row) => `${row[col1Index]}|${row[col2Index]}`)
+      );
 
-        reader1.onload = function (e1) {
-          const data1 = new Uint8Array(e1.target.result);
-          const workbook1 = XLSX.read(data1, { type: "array" });
-          const sheet1 = workbook1.Sheets[workbook1.SheetNames[0]];
-          const dataJson1 = XLSX.utils.sheet_to_json(sheet1, { header: 1 });
+      jsonData2.slice(1).forEach((row) => {
+        const key = `${row[col1Index]}|${row[col2Index]}`;
+        if (!data1Set.has(key)) {
+          uniqueInSecond.push(row);
+        }
+      });
 
-          // Filter out empty rows
-          const filteredDataJson1 = dataJson1.filter((row) =>
-            row.some((cell) => cell !== null && cell !== "")
-          );
+      const resultData = [];
+      resultData.push(jsonData1[0]); // Fejléc hozzáadása
+      uniqueInFirst.forEach((row) => resultData.push(row));
+      uniqueInSecond.forEach((row) => resultData.push(row));
 
-          reader2.onload = function (e2) {
-            const data2 = new Uint8Array(e2.target.result);
-            const workbook2 = XLSX.read(data2, { type: "array" });
-            const sheet2 = workbook2.Sheets[workbook2.SheetNames[0]];
-            const dataJson2 = XLSX.utils.sheet_to_json(sheet2, { header: 1 });
+      if (resultData.length > 1) {
+        const wb = XLSX.utils.book_new();
+        const ws = XLSX.utils.aoa_to_sheet(resultData);
+        XLSX.utils.book_append_sheet(wb, ws, "Összehasonlítás Eredménye");
 
-            // Filter out empty rows
-            const filteredDataJson2 = dataJson2.filter((row) =>
-              row.some((cell) => cell !== null && cell !== "")
-            );
-
-            const uniqueInFirst = [];
-            const uniqueInSecond = [];
-
-            // Készítsünk egy Set-et a második fájl soraihoz gyors keresés érdekében
-            const data2Set = new Set(
-              filteredDataJson2.slice(1).map((row) => JSON.stringify(row))
-            );
-
-            // Ellenőrzés, hogy mi nincs a második fájlban
-            filteredDataJson1.slice(1).forEach((row) => {
-              if (!data2Set.has(JSON.stringify(row))) {
-                uniqueInFirst.push(row);
-              }
-            });
-
-            // Készítsünk egy Set-et az első fájl soraihoz gyors keresés érdekében
-            const data1Set = new Set(
-              filteredDataJson1.slice(1).map((row) => JSON.stringify(row))
-            );
-
-            // Ellenőrzés, hogy mi nincs az első fájlban
-            filteredDataJson2.slice(1).forEach((row) => {
-              if (!data1Set.has(JSON.stringify(row))) {
-                uniqueInSecond.push(row);
-              }
-            });
-
-            // Kimenet előkészítése
-            const resultData = [];
-            resultData.push(filteredDataJson1[0]); // Fejléc hozzáadása
-
-            // Egyedi sorok hozzáadása
-            uniqueInFirst.forEach((row) => resultData.push(row));
-            uniqueInSecond.forEach((row) => resultData.push(row));
-
-            if (resultData.length > 1) {
-              // Munkafüzet és munkalap létrehozása az eredményekhez
-              const wb = XLSX.utils.book_new();
-              const ws = XLSX.utils.aoa_to_sheet(resultData);
-              XLSX.utils.book_append_sheet(wb, ws, "Összehasonlítás Eredménye");
-
-              // Fájl letöltése
-              XLSX.writeFile(wb, "osszehasonlitas_eredmenye.xlsx");
-              document.getElementById("comparisonResult").innerHTML =
-                "<p>Az összehasonlítás eredménye elmentve!</p>";
-            } else {
-              document.getElementById("comparisonResult").innerHTML =
-                "<p>Nincs különbség a fájlok között.</p>";
-            }
-          };
-
-          reader2.readAsArrayBuffer(fileInput2);
-        };
-
-        reader1.readAsArrayBuffer(fileInput1);
+        XLSX.writeFile(wb, "osszehasonlitas_eredmenye.xlsx");
+        document.getElementById("comparisonResult").innerHTML =
+          "<p>Az összehasonlítás eredménye elmentve!</p>";
+      } else {
+        document.getElementById("comparisonResult").innerHTML =
+          "<p>Nincs különbség a fájlok között.</p>";
       }
+    }
 
-      // Törlés funkció
-      document
-        .getElementById("clearButton")
-        .addEventListener("click", clearData);
+    document.getElementById("clearButton").addEventListener("click", clearData);
 
-      function clearData() {
-        // Fájlinputok törlése
-        document.getElementById("excelFileInput").value = "";
-        document.getElementById("excelFileInput1").value = "";
-        document.getElementById("excelFileInput2").value = "";
-        document.getElementById("headerSelect").value = "";
-        document.getElementById("valueList").value = "";
+    function clearData() {
+      document.getElementById("excelFileInput1").value = "";
+      document.getElementById("excelFileInput2").value = "";
+      document.getElementById("columnSelect1").innerHTML =
+        '<option value="" selected disabled>Válasszon oszlopot</option>';
+      document.getElementById("columnSelect2").innerHTML =
+        '<option value="" selected disabled>Válasszon oszlopot</option>';
+      document.getElementById("comparisonResult").innerHTML =
+        "<p>Itt jelenik meg az összehasonlítás eredménye.</p>";
 
-        // Eredmények törlése
-        document.getElementById("comparisonResult").innerHTML = "";
-      }
-    </script>
-  </body>
+      document.getElementById("columnSelect1").disabled = true;
+      document.getElementById("columnSelect2").disabled = true;
+      document.querySelector("button[onclick='compareExcelFiles()']").disabled = true;
+    }
+  </script>
+</body>
 </html>
