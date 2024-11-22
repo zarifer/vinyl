@@ -2,7 +2,7 @@
 <html lang="hu">
   <head>
     <meta charset="UTF-8" />
-    <title>Két Excel összehasonlítása</title>
+    <title>Delta selection</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.17.0/xlsx.full.min.js"></script>
     <style>
       body {
@@ -50,14 +50,14 @@
   </head>
   <body>
     <div class="container">
-      <h1>Két Excel összehasonlítása</h1>
-      <label for="excelFileInput1">Excel fájl 1:</label>
+      <h1>Delta választás</h1>
+      <label for="excelFileInput1">Előző évi excel fáj:</label>
       <input type="file" id="excelFileInput1" accept=".xlsx, .xls" />
 
-      <label for="excelFileInput2">Excel fájl 2:</label>
+      <label for="excelFileInput2">Idei évi excel fájl:</label>
       <input type="file" id="excelFileInput2" accept=".xlsx, .xls" />
 
-      <button onclick="loadExcelFiles()">Fájlok betöltése</button>
+      <button onclick="loadExcelFiles()">Fájlok beolvas</button>
 
       <label for="columnSelect1">Első oszlop:</label>
       <select id="columnSelect1" disabled>
@@ -75,7 +75,7 @@
       </div>
 
       <h1>Két Excel egyesítése</h1>
-      <label for="mergeFileInput1">Excel fájl 1:</label>
+      <label for="mergeFileInput1">Excel fájl 1::</label>
       <input type="file" id="mergeFileInput1" accept=".xlsx, .xls" />
 
       <label for="mergeFileInput2">Excel fájl 2:</label>
@@ -162,55 +162,41 @@
           return;
         }
 
-        const uniqueInFirst = [];
-        const uniqueInSecond = [];
-
-        // Szűrés az üres sorok eltávolítására
-        const filteredData1 = jsonData1
-          .slice(1)
-          .filter((row) => row[col1Index] && row[col2Index]);
-        const filteredData2 = jsonData2
-          .slice(1)
-          .filter((row) => row[col1Index] && row[col2Index]);
-
-        const data2Set = new Set(
-          filteredData2.map((row) => `${row[col1Index]}|${row[col2Index]}`)
-        );
-
-        filteredData1.forEach((row) => {
-          const key = `${row[col1Index]}|${row[col2Index]}`;
-          if (!data2Set.has(key)) {
-            uniqueInFirst.push(row);
-          }
-        });
-
         const data1Set = new Set(
-          filteredData1.map((row) => `${row[col1Index]}|${row[col2Index]}`)
+          jsonData1.slice(1).map((row) => `${row[col1Index]}|${row[col2Index]}`)
         );
 
-        filteredData2.forEach((row) => {
+        const newRowsInSecondFile = [];
+
+        jsonData2.slice(1).forEach((row) => {
           const key = `${row[col1Index]}|${row[col2Index]}`;
           if (!data1Set.has(key)) {
-            uniqueInSecond.push(row);
+            newRowsInSecondFile.push(row);
           }
         });
 
-        const resultData = [];
-        resultData.push(jsonData1[0]); // Fejléc hozzáadása
-        uniqueInFirst.forEach((row) => resultData.push(row));
-        uniqueInSecond.forEach((row) => resultData.push(row));
+        if (newRowsInSecondFile.length > 0) {
+          // Új fájl készítése az eredményekkel
+          const resultData = [];
+          resultData.push(jsonData2[0]); // Fejléc hozzáadása
+          newRowsInSecondFile.forEach((row) => resultData.push(row));
 
-        if (resultData.length > 1) {
           const wb = XLSX.utils.book_new();
           const ws = XLSX.utils.aoa_to_sheet(resultData);
-          XLSX.utils.book_append_sheet(wb, ws, "Összehasonlítás Eredménye");
+          XLSX.utils.book_append_sheet(wb, ws, "New Entries");
 
-          XLSX.writeFile(wb, "osszehasonlitas_eredmenye.xlsx");
-          document.getElementById("comparisonResult").innerHTML =
-            "<p>Az összehasonlítás eredménye elmentve!</p>";
+          const firstFileName = document
+            .getElementById("excelFileInput2")
+            .files[0].name.replace(/\.[^/.]+$/, "");
+          const newFileName = `${firstFileName}_new_entries.xlsx`;
+
+          XLSX.writeFile(wb, newFileName);
+          document.getElementById(
+            "comparisonResult"
+          ).innerHTML = `<p>Az új sorokat tartalmazó fájl elmentve: ${newFileName}</p>`;
         } else {
           document.getElementById("comparisonResult").innerHTML =
-            "<p>Nincs különbség a fájlok között.</p>";
+            "<p>Nincsenek új sorok a második fájlban az elsőhöz képest.</p>";
         }
       }
 
