@@ -130,54 +130,49 @@
 
   <body>
     <div class="navbar">
-      <a href="sample_selection.html">Excel Feldolgozó</a>
-      <a href="calculation_helper.html">Egyéb Oldal</a>
+      <a href="sample_selection.html">Sample Selection</a>
+      <a href="delta_selection.html">Delta Selection</a>
+      <a href="calculation_helper.html">Calculation Helpers</a>
     </div>
 
     <div class="container">
-      <h1>Excel Feldolgozó</h1>
+      <h1>Sample Selection</h1>
       <input type="file" id="excelFileInput" accept=".xlsx, .xls" />
-      <button onclick="readExcel()">Fájl beolvasása</button>
+      <button onclick="readExcel()">Read file</button>
 
-      <label for="headerSelect"
-        >Válassza ki az első szűrni kívánt fejlécet:</label
-      >
+      <label for="headerSelect">First column</label>
       <select id="headerSelect" disabled>
-        <option value="" selected disabled>Válasszon egy fejlécet</option>
+        <option value="" selected disabled>Choose a header</option>
       </select>
 
       <div id="valueList1" class="checkbox-group" style="display: none"></div>
 
-      <label for="headerSelect2"
-        >Válassza ki a második szűrni kívánt fejlécet:</label
-      >
+      <label for="headerSelect2">Second column</label>
       <select id="headerSelect2" disabled>
-        <option value="" selected disabled>Válasszon egy fejlécet</option>
+        <option value="" selected disabled>Choose a header</option>
       </select>
 
       <div id="valueList2" class="checkbox-group" style="display: none"></div>
 
-      <label for="headerSelect3"
-        >Válassza ki a harmadik szűrni kívánt fejlécet:</label
-      >
+      <label for="headerSelect3">Third column</label>
       <select id="headerSelect3" disabled>
-        <option value="" selected disabled>Válasszon egy fejlécet</option>
+        <option value="" selected disabled>Choose a header</option>
       </select>
 
       <div id="valueList3" class="checkbox-group" style="display: none"></div>
 
       <button id="processButton" disabled onclick="processFilteredExcel()">
-        Szűrt adatok letöltése
+        Download filtered excel
       </button>
-      <button onclick="clearFile()">Törlés</button>
+      <button onclick="clearFile()">Clear all</button>
 
       <div id="preview">
-        <div id="previewContent">Itt megjelennek a szűrt adatok.</div>
+        <div id="previewContent">The result displays here</div>
       </div>
     </div>
 
     <div class="footer">
-      <p>© 2024. Minden jog fenntartva.</p>
+      <p>&copy; <span id="current-year"></span> Copyright Kitty</p>
     </div>
 
     <script>
@@ -196,21 +191,17 @@
           const workbook = XLSX.read(data, { type: "array" });
           const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
 
-          // Beolvasás JSON formátumba a cellaformátumokkal
           jsonData = XLSX.utils.sheet_to_json(firstSheet, {
             header: 1,
-            raw: false, // Használja a cellák formázott értékeit
+            raw: false,
           });
 
-          // Dátumok átkonvertálása: manuálisan végigmegyünk minden cellán
           jsonData = jsonData.map((row, rowIndex) => {
             return row.map((cell, cellIndex) => {
-              // Csak akkor próbáljuk meg konvertálni, ha az első sort már átléptük, vagyis nem a fejlécsorban vagyunk
               if (rowIndex > 0 && typeof cell === "string") {
-                // Próbáljuk meg dátumként értelmezni az adott cellát
                 const date = Date.parse(cell);
                 if (!isNaN(date)) {
-                  return new Date(date).toLocaleDateString("hu-HU"); // Formázzuk magyar dátumformátumban
+                  return new Date(date).toLocaleDateString("hu-HU");
                 }
               }
               return cell;
@@ -230,11 +221,11 @@
         const headerSelect3 = document.getElementById("headerSelect3");
 
         headerSelect.innerHTML =
-          '<option value="" selected disabled>Válasszon egy fejlécet</option>';
+          '<option value="" selected disabled>Choose a header</option>';
         headerSelect2.innerHTML =
-          '<option value="" selected disabled>Válasszon egy fejlécet</option>';
+          '<option value="" selected disabled>Choose a header</option>';
         headerSelect3.innerHTML =
-          '<option value="" selected disabled>Válasszon egy fejlécet</option>';
+          '<option value="" selected disabled>Choose a header</option>';
 
         headers.forEach((header, index) => {
           headerSelect.innerHTML += `<option value="${index}">${header}</option>`;
@@ -258,7 +249,6 @@
 
         const valueMap = {};
 
-        // Ellenőrizzük a kiválasztott értékeket az első két szűrőből
         const selected1 = selectedValues1.length > 0 ? selectedValues1 : null;
         const selected2 = selectedValues2.length > 0 ? selectedValues2 : null;
 
@@ -269,7 +259,6 @@
           const key2 =
             row[parseInt(document.getElementById("headerSelect2").value)];
 
-          // Csak akkor adjuk hozzá a dátumot, ha a szűrőfeltételek teljesülnek
           if (
             key3 &&
             (!selected1 || selected1.includes(key1)) &&
@@ -282,7 +271,6 @@
           }
         });
 
-        // Minden kiválasztott dátumból csak egy eseményt választunk ki véletlenszerűen
         const uniqueDates = Object.keys(valueMap);
         uniqueDates.forEach((date) => {
           const items = valueMap[date];
@@ -300,13 +288,13 @@
             } else {
               selectedValues3 = selectedValues3.filter((v) => v !== this.value);
             }
-            generatePreview(); // Generate preview on change
+            generatePreview();
           });
 
           listItem.appendChild(checkbox);
           const label = document.createElement("label");
           label.htmlFor = date;
-          label.textContent = randomItem[selectedHeaderIndex]; // A véletlenszerűen kiválasztott dátum megjelenítése
+          label.textContent = randomItem[selectedHeaderIndex];
           listItem.appendChild(label);
           valueList3.appendChild(listItem);
         });
@@ -342,7 +330,7 @@
                   (v) => v !== this.value
                 );
               }
-              generatePreview(); // Generate preview on change
+              generatePreview();
             });
 
             listItem.appendChild(checkbox);
@@ -382,7 +370,7 @@
                   (v) => v !== this.value
                 );
               }
-              generatePreview(); // Generate preview on change
+              generatePreview();
             });
 
             listItem.appendChild(checkbox);
@@ -402,7 +390,6 @@
 
           const valueSet = new Set();
 
-          // Csak azok a dátumok, amelyek megfelelnek az első két szűrőnek
           const selected1 = selectedValues1.length > 0 ? selectedValues1 : null;
           const selected2 = selectedValues2.length > 0 ? selectedValues2 : null;
 
@@ -438,7 +425,7 @@
                 );
               }
               checkProcessButtonState();
-              generatePreview(); // Generate preview on change
+              generatePreview();
             });
 
             listItem.appendChild(checkbox);
@@ -453,7 +440,7 @@
         });
 
       function generatePreview() {
-        const uniqueDates = {}; // Új objektum a dátum típusú oszlophoz
+        const uniqueDates = {};
 
         const filteredData = jsonData.filter((row) => {
           const match1 =
@@ -475,7 +462,6 @@
           const dateValue =
             row[parseInt(document.getElementById("headerSelect3").value)];
 
-          // Ha már hozzáadtuk ezt a dátumot az objektumhoz, ugorjunk a következő iterációra
           if (
             match1 &&
             match2 &&
@@ -483,14 +469,14 @@
             dateValue &&
             !uniqueDates[dateValue]
           ) {
-            uniqueDates[dateValue] = row; // Csak az első találatot adjuk hozzá
+            uniqueDates[dateValue] = row;
             return true;
           }
           return false;
         });
 
         const previewContent = document.getElementById("previewContent");
-        previewContent.innerHTML = ""; // Clear previous preview
+        previewContent.innerHTML = "";
 
         if (filteredData.length > 0) {
           const table = document.createElement("table");
@@ -502,7 +488,6 @@
           });
           table.appendChild(headerRow);
 
-          // Csak az első találatokat tartalmazó objektum értékeit adjuk hozzá
           Object.values(uniqueDates).forEach((row) => {
             const tr = document.createElement("tr");
             row.forEach((cell) => {
@@ -515,7 +500,7 @@
 
           previewContent.appendChild(table);
         } else {
-          previewContent.innerText = "Nincs találat a szűrés alapján.";
+          previewContent.innerText = "No results found";
         }
       }
 
@@ -527,12 +512,10 @@
           selectedValues3.length === 0;
       }
       function processFilteredExcel() {
-        // Egyedi dátumok nyilvántartása az első találat szerint
         const uniqueDates = {};
 
-        // Szűrt adatok létrehozása a felhasználó által kiválasztott szűrési feltételek alapján
         const filteredData = jsonData.filter((row, rowIndex) => {
-          if (rowIndex === 0) return true; // Az első sor a fejléc
+          if (rowIndex === 0) return true;
 
           const match1 =
             selectedValues1.length === 0 ||
@@ -553,7 +536,6 @@
           const dateValue =
             row[parseInt(document.getElementById("headerSelect3").value)];
 
-          // Csak az első találatot adjuk hozzá a `uniqueDates` objektumhoz
           if (
             match1 &&
             match2 &&
@@ -561,27 +543,23 @@
             dateValue &&
             !uniqueDates[dateValue]
           ) {
-            uniqueDates[dateValue] = row; // Csak az első találatot tároljuk
+            uniqueDates[dateValue] = row;
             return true;
           }
           return false;
         });
 
-        // Excel munkafüzet és munkalap létrehozása
         const wb = XLSX.utils.book_new();
-        const wsData = [jsonData[0]]; // A fejléc sor hozzáadása
+        const wsData = [jsonData[0]];
 
-        // Egyedi dátumokat hozzáadjuk a munkalaphoz
         Object.values(uniqueDates).forEach((row) => {
           wsData.push(row);
         });
 
-        // Az adatok munkalappá alakítása
         const ws = XLSX.utils.aoa_to_sheet(wsData);
-        XLSX.utils.book_append_sheet(wb, ws, "Szűrt Adatok");
+        XLSX.utils.book_append_sheet(wb, ws, "Sample-selection");
 
-        // Fájl mentése Excel formátumban
-        XLSX.writeFile(wb, "szurt_adatok.xlsx");
+        XLSX.writeFile(wb, "sample_selection.xlsx");
       }
 
       function clearFile() {
@@ -595,8 +573,11 @@
         document.getElementById("valueList2").style.display = "none";
         document.getElementById("valueList3").style.display = "none";
         document.getElementById("previewContent").innerHTML =
-          "Itt megjelennek a szűrt adatok.";
+          "Filtered data will appear here.";
       }
+
+      document.getElementById("current-year").textContent =
+        new Date().getFullYear();
     </script>
   </body>
 </html>

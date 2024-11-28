@@ -2,7 +2,7 @@
 <html lang="hu">
   <head>
     <meta charset="UTF-8" />
-    <title>Delta selection</title>
+    <title>Delta Selection</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.17.0/xlsx.full.min.js"></script>
     <style>
       body {
@@ -33,6 +33,24 @@
         border: 1px solid #ddd;
         border-radius: 4px;
       }
+      .navbar {
+        background-color: #0056b3;
+        padding: 10px;
+        text-align: center;
+      }
+
+      .navbar a {
+        color: white;
+        padding: 14px 20px;
+        text-decoration: none;
+        font-size: 1em;
+        margin: 0 10px;
+      }
+
+      .navbar a:hover {
+        background-color: #003d80;
+        border-radius: 3px;
+      }
       button {
         background-color: #0056b3;
         color: white;
@@ -46,46 +64,62 @@
       label {
         font-weight: bold;
       }
+
+      .footer {
+        text-align: center;
+        margin-top: 20px;
+        font-size: 0.9em;
+        color: #777;
+      }
     </style>
   </head>
   <body>
+    <div class="navbar">
+      <a href="sample_selection.html">Sample Selection</a>
+      <a href="delta_selection.html">Delta Selection</a>
+      <a href="calculation_helper.html">Calculation Helpers</a>
+    </div>
     <div class="container">
-      <h1>Delta választás</h1>
-      <label for="excelFileInput1">Előző évi excel fáj:</label>
+      <h1>Delta Selection</h1>
+      <label for="excelFileInput1">Previous year's Excel file</label>
       <input type="file" id="excelFileInput1" accept=".xlsx, .xls" />
 
-      <label for="excelFileInput2">Idei évi excel fájl:</label>
+      <label for="excelFileInput2">Current year's Excel file</label>
       <input type="file" id="excelFileInput2" accept=".xlsx, .xls" />
 
-      <button onclick="loadExcelFiles()">Fájlok beolvas</button>
+      <button onclick="loadExcelFiles()">Read files</button>
 
-      <label for="columnSelect1">Első oszlop:</label>
+      <label for="columnSelect1">First column</label>
       <select id="columnSelect1" disabled>
-        <option value="" selected disabled>Válasszon oszlopot</option>
+        <option value="" selected disabled>Choose a header</option>
       </select>
 
-      <label for="columnSelect2">Második oszlop:</label>
+      <label for="columnSelect2">Second column</label>
       <select id="columnSelect2" disabled>
-        <option value="" selected disabled>Válasszon oszlopot</option>
+        <option value="" selected disabled>Choose a header</option>
       </select>
 
-      <button onclick="compareExcelFiles()" disabled>Összehasonlítás</button>
+      <button onclick="compareExcelFiles()" disabled>Compare</button>
       <div id="comparisonResult">
-        <p>Itt jelenik meg az összehasonlítás eredménye.</p>
+        <p>The result of the comparison is displayed here.</p>
       </div>
 
-      <h1>Két Excel egyesítése</h1>
-      <label for="mergeFileInput1">Excel fájl 1::</label>
+      <h1>Merge on tabs</h1>
+      <label for="mergeFileInput1">First Excel file (first tab)</label>
       <input type="file" id="mergeFileInput1" accept=".xlsx, .xls" />
 
-      <label for="mergeFileInput2">Excel fájl 2:</label>
+      <label for="mergeFileInput2">Second Excel file (second tab)</label>
       <input type="file" id="mergeFileInput2" accept=".xlsx, .xls" />
 
-      <button onclick="mergeExcelFiles()">Fájlok egyesítése</button>
+      <button onclick="mergeExcelFiles()">Merge files</button>
       <div id="mergeResult">
-        <p>Itt jelenik meg az egyesítés eredménye.</p>
+        <p>The result of the comparison is displayed here.</p>
       </div>
-      <button id="clearButton">Törlés</button>
+      <button id="clearButton">Clear all</button>
+    </div>
+
+    <div class="footer">
+      <p>&copy; <span id="current-year"></span> Copyright Kitty</p>
     </div>
 
     <script>
@@ -97,7 +131,7 @@
         const fileInput2 = document.getElementById("excelFileInput2").files[0];
 
         if (!fileInput1 || !fileInput2) {
-          alert("Töltsön fel két fájlt a betöltéshez!");
+          alert("Please upload both Excel files!");
           return;
         }
 
@@ -136,9 +170,9 @@
         const headers2 = jsonData2[0];
 
         columnSelect1.innerHTML =
-          '<option value="" selected disabled>Válasszon oszlopot</option>';
+          '<option value="" selected disabled>Choose a header</option>';
         columnSelect2.innerHTML =
-          '<option value="" selected disabled>Válasszon oszlopot</option>';
+          '<option value="" selected disabled>Choose a header</option>';
 
         headers1.forEach((header, index) => {
           columnSelect1.innerHTML += `<option value="${index}">${header}</option>`;
@@ -158,7 +192,7 @@
         );
 
         if (isNaN(col1Index) || isNaN(col2Index)) {
-          alert("Válasszon ki két oszlopot az összehasonlításhoz!");
+          alert("Please choose two columns!");
           return;
         }
 
@@ -176,9 +210,8 @@
         });
 
         if (newRowsInSecondFile.length > 0) {
-          // Új fájl készítése az eredményekkel
           const resultData = [];
-          resultData.push(jsonData2[0]); // Fejléc hozzáadása
+          resultData.push(jsonData2[0]);
           newRowsInSecondFile.forEach((row) => resultData.push(row));
 
           const wb = XLSX.utils.book_new();
@@ -193,10 +226,10 @@
           XLSX.writeFile(wb, newFileName);
           document.getElementById(
             "comparisonResult"
-          ).innerHTML = `<p>Az új sorokat tartalmazó fájl elmentve: ${newFileName}</p>`;
+          ).innerHTML = `<p>The file containing the new lines is saved under this name: ${newFileName}</p>`;
         } else {
           document.getElementById("comparisonResult").innerHTML =
-            "<p>Nincsenek új sorok a második fájlban az elsőhöz képest.</p>";
+            "<p>There are no new lines in the second file compared to the first.</p>";
         }
       }
 
@@ -205,7 +238,7 @@
         const fileInput2 = document.getElementById("mergeFileInput2").files[0];
 
         if (!fileInput1 || !fileInput2) {
-          alert("Töltsön fel két fájlt az egyesítéshez!");
+          alert("Please upload both Excel files!");
           return;
         }
 
@@ -224,26 +257,21 @@
             const sheet2 = workbook2.Sheets[workbook2.SheetNames[0]];
             const data2Json = XLSX.utils.sheet_to_json(sheet2, { header: 1 });
 
-            // Új munkafüzet létrehozása
             const newWorkbook = XLSX.utils.book_new();
 
-            // Első lap hozzáadása "2024-all" névvel
             const ws1 = XLSX.utils.aoa_to_sheet(data1Json);
             XLSX.utils.book_append_sheet(newWorkbook, ws1, "2024-all");
 
-            // Második lap hozzáadása "New-joiners" névvel
             const ws2 = XLSX.utils.aoa_to_sheet(data2Json);
             XLSX.utils.book_append_sheet(newWorkbook, ws2, "New-joiners");
 
-            // Fájl neve a betöltött első fájl nevéből származik, hozzáadva a "_2024_selection" részt
-            const firstFileName = fileInput1.name.replace(/\.[^/.]+$/, ""); // eltávolítja az kiterjesztést
+            const firstFileName = fileInput1.name.replace(/\.[^/.]+$/, "");
             const newFileName = `${firstFileName}_2024_selection.xlsx`;
 
-            // Új fájl letöltése a generált névvel
             XLSX.writeFile(newWorkbook, newFileName);
             document.getElementById(
               "mergeResult"
-            ).innerHTML = `<p>Az egyesített fájl elmentve: ${newFileName}</p>`;
+            ).innerHTML = `<p>The merged file is saved under this name: ${newFileName}</p>`;
           };
 
           reader2.readAsArrayBuffer(fileInput2);
@@ -260,11 +288,11 @@
         document.getElementById("excelFileInput1").value = "";
         document.getElementById("excelFileInput2").value = "";
         document.getElementById("columnSelect1").innerHTML =
-          '<option value="" selected disabled>Válasszon oszlopot</option>';
+          '<option value="" selected disabled>Choose a header</option>';
         document.getElementById("columnSelect2").innerHTML =
-          '<option value="" selected disabled>Válasszon oszlopot</option>';
+          '<option value="" selected disabled>Choose a header</option>';
         document.getElementById("comparisonResult").innerHTML =
-          "<p>Itt jelenik meg az összehasonlítás eredménye.</p>";
+          "<p>The result displays here.</p>";
         document.getElementById("mergeFileInput1").value = "";
         document.getElementById("mergeFileInput2").value = "";
 
@@ -274,6 +302,9 @@
           "button[onclick='compareExcelFiles()']"
         ).disabled = true;
       }
+
+      document.getElementById("current-year").textContent =
+        new Date().getFullYear();
     </script>
   </body>
 </html>

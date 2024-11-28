@@ -2,7 +2,7 @@
 <html lang="hu">
   <head>
     <meta charset="UTF-8" />
-    <title>Kalkulátorok</title>
+    <title>Calculation Helpers</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.17.0/xlsx.full.min.js"></script>
     <style>
       body {
@@ -106,46 +106,68 @@
         border-radius: 4px;
         background-color: #e7f3ff;
       }
+
+      .footer {
+        text-align: center;
+        margin-top: 20px;
+        font-size: 0.9em;
+        color: #777;
+      }
     </style>
   </head>
 
   <body>
     <div class="navbar">
-      <a href="sample_selection.html">Excel Feldolgozó</a>
-      <a href="calculation_helper.html">Egyéb Oldal</a>
+      <a href="sample_selection.html">Sample Selection</a>
+      <a href="delta_selection.html">Delta Selection</a>
+      <a href="calculation_helper.html">Calculation Helpers</a>
     </div>
 
     <div class="container">
-      <h1>Kalkulátorok</h1>
+      <h1>Calculation Helpers</h1>
 
-      <!-- Sorok számláló -->
       <div class="calculator">
-        <h2>Sorok Számláló</h2>
-        <label for="rowCounterFileInput">Válassza ki az Excel fájlt:</label>
+        <h2>Count lines</h2>
+        <label for="rowCounterFileInput">Upload an Excel file</label>
         <input type="file" id="rowCounterFileInput" accept=".xlsx, .xls" />
-        <button onclick="countRows()">Sorok számlálása</button>
+        <button onclick="countRows()">Count lines</button>
         <div id="rowCountResult" class="result"></div>
       </div>
 
-      <!-- Összehasonlító kalkulátor -->
       <div class="calculator">
-        <h2>Összehasonlító Kalkulátor</h2>
-        <label for="rawFileInput"
-          >Válassza ki az eredeti (raw) Excel fájlt:</label
+        <h2>Unique Value Counter</h2>
+        <label for="uniqueValueFileInput">Upload an Excel file</label>
+        <input
+          type="file"
+          id="uniqueValueFileInput"
+          accept=".xlsx, .xls"
+          onchange="loadUniqueHeaders()"
+        />
+
+        <label for="uniqueHeaderSelect"
+          >Select a column to count unique values</label
         >
+        <select id="uniqueHeaderSelect">
+          <option value="">-- Choose a header --</option>
+        </select>
+
+        <button onclick="countUniqueValues()">Count Unique Values</button>
+        <div id="uniqueCountResult" class="result"></div>
+      </div>
+
+      <div class="calculator">
+        <h2>Compare files</h2>
+        <label for="rawFileInput">Choose the original Excel file</label>
         <input type="file" id="rawFileInput" accept=".xlsx, .xls" />
-        <label for="filteredFileInput"
-          >Válassza ki a szűrt (filtered) Excel fájlt:</label
-        >
+        <label for="filteredFileInput">Choose the filtered Excel file</label>
         <input type="file" id="filteredFileInput" accept=".xlsx, .xls" />
-        <button onclick="compareFiles()">Összehasonlítás</button>
+        <button onclick="compareFiles()">Compare</button>
         <div id="compareResult" class="result"></div>
       </div>
 
-      <!-- Hónap kalkulátor -->
       <div class="calculator">
-        <h2>Hónap Kalkulátor</h2>
-        <label for="monthFileInput">Válassza ki az Excel fájlt:</label>
+        <h2>Month calculator</h2>
+        <label for="monthFileInput">Choose an Excel file</label>
         <input
           type="file"
           id="monthFileInput"
@@ -154,399 +176,456 @@
         />
 
         <label for="dateHeaderSelect"
-          >Válassza ki a dátumot tartalmazó oszlop nevét:</label
+          >Select the name of the column containing the date</label
         >
         <select id="dateHeaderSelect">
-          <option value="">-- Válasszon oszlopot --</option>
+          <option value="">-- Choose a header --</option>
         </select>
 
-        <label for="sampleSizeInput">Minta mérete:</label>
+        <label for="sampleSizeInput">Size of the selection</label>
         <input type="number" id="sampleSizeInput" value="25" min="1" />
 
-        <button onclick="calculateMonths()">Hónapok számolása</button>
+        <button onclick="calculateMonths()">Count months</button>
         <div id="monthCountResult" class="result"></div>
-        <!-- Eredmények letöltése -->
-        <button onclick="downloadResults()">
-          Eredmények letöltése TXT-ként
+        <button onclick="downloadResults()">Results download in .txt</button>
       </div>
 
-      <!-- Új szekció: Excel fájlok egyesítése -->
       <div class="calculator">
-        <h2>Excel Fájlok Egyesítése</h2>
-        <label for="mergeFileInput">Válassza ki az Excel fájlokat:</label>
+        <h2>Merge all excel files</h2>
+        <label for="mergeFileInput">Please choose the Excel files</label>
         <input type="file" id="mergeFileInput" accept=".xlsx, .xls" multiple />
-        <button onclick="mergeFiles()">Fájlok egyesítése</button>
+        <button onclick="mergeFiles()">Merge files</button>
         <div id="mergeResult" class="result"></div>
       </div>
-        </button>
-        <!-- Clear All gomb -->
-        <button onclick="clearAll()">Összes törlése</button>
-    </div>
+      <button onclick="clearAll()">Clear all</button>
 
-    <script>
-      // Sorok számláló funkció
-      function countRows() {
-        const fileInput = document.getElementById("rowCounterFileInput");
-        const file = fileInput.files[0];
+      <div class="footer">
+        <p>&copy; <span id="current-year"></span> Copyright Kitty</p>
+      </div>
 
-        if (!file) {
-          alert("Kérjük, válasszon egy Excel fájlt!");
-          return;
-        }
+      <script>
+        function countRows() {
+          const fileInput = document.getElementById("rowCounterFileInput");
+          const file = fileInput.files[0];
 
-        const reader = new FileReader();
-        reader.onload = function (e) {
-          const data = new Uint8Array(e.target.result);
-          const workbook = XLSX.read(data, { type: "array" });
-          const worksheet = workbook.Sheets[workbook.SheetNames[0]];
-          const jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
+          if (!file) {
+            alert("Please choose an Excel file!");
+            return;
+          }
 
-          // Kitöltött sorok száma
-          const rowCount = jsonData.filter((row) =>
-            row.some(
-              (cell) => cell !== undefined && cell !== null && cell !== ""
-            )
-          ).length;
-          document.getElementById(
-            "rowCountResult"
-          ).textContent = `Kitöltött sorok száma: ${rowCount}`;
-        };
+          const reader = new FileReader();
+          reader.onload = function (e) {
+            const data = new Uint8Array(e.target.result);
+            const workbook = XLSX.read(data, { type: "array" });
+            const worksheet = workbook.Sheets[workbook.SheetNames[0]];
+            const jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
 
-        reader.readAsArrayBuffer(file);
-      }
-
-      // Összehasonlító kalkulátor funkció
-      function compareFiles() {
-        const rawFileInput = document.getElementById("rawFileInput");
-        const filteredFileInput = document.getElementById("filteredFileInput");
-
-        const rawFile = rawFileInput.files[0];
-        const filteredFile = filteredFileInput.files[0];
-
-        if (!rawFile || !filteredFile) {
-          alert("Kérjük, válassza ki mindkét Excel fájlt!");
-          return;
-        }
-
-        // Olvassuk be mindkét fájlt
-        const readerRaw = new FileReader();
-        const readerFiltered = new FileReader();
-
-        readerRaw.onload = function (eRaw) {
-          const rawData = new Uint8Array(eRaw.target.result);
-          const workbookRaw = XLSX.read(rawData, { type: "array" });
-          const worksheetRaw = workbookRaw.Sheets[workbookRaw.SheetNames[0]];
-          const jsonDataRaw = XLSX.utils.sheet_to_json(worksheetRaw, {
-            header: 1,
-          });
-
-          readerFiltered.onload = function (eFiltered) {
-            const filteredData = new Uint8Array(eFiltered.target.result);
-            const workbookFiltered = XLSX.read(filteredData, { type: "array" });
-            const worksheetFiltered =
-              workbookFiltered.Sheets[workbookFiltered.SheetNames[0]];
-            const jsonDataFiltered = XLSX.utils.sheet_to_json(
-              worksheetFiltered,
-              { header: 1 }
-            );
-
-            // Összehasonlítás logikája
-            const differences = [];
-            for (
-              let i = 0;
-              i < Math.max(jsonDataRaw.length, jsonDataFiltered.length);
-              i++
-            ) {
-              const rawRow = jsonDataRaw[i] || [];
-              const filteredRow = jsonDataFiltered[i] || [];
-
-              // Simple comparison, adjust as necessary
-              if (JSON.stringify(rawRow) !== JSON.stringify(filteredRow)) {
-                differences.push({
-                  raw: rawRow,
-                  filtered: filteredRow,
-                });
-              }
-            }
-
-            document.getElementById("compareResult").innerHTML =
-              differences.length > 0
-                ? `Különbségek száma: ${differences.length}`
-                : "Nincs különbség.";
+            const rowCount = jsonData.filter((row) =>
+              row.some(
+                (cell) => cell !== undefined && cell !== null && cell !== ""
+              )
+            ).length;
+            document.getElementById(
+              "rowCountResult"
+            ).textContent = `Filled number of lines: ${rowCount}`;
           };
 
-          readerFiltered.readAsArrayBuffer(filteredFile);
-        };
-
-        readerRaw.readAsArrayBuffer(rawFile);
-      }
-
-      // Hónapok számolása funkció
-      function calculateMonths() {
-        const fileInput = document.getElementById("monthFileInput");
-        const file = fileInput.files[0];
-        const dateHeader = document.getElementById("dateHeaderSelect").value;
-        const sampleSize = parseInt(
-          document.getElementById("sampleSizeInput").value,
-          10
-        );
-
-        if (!file || !dateHeader) {
-          alert("Kérjük, válasszon egy Excel fájlt és egy oszlopot!");
-          return;
+          reader.readAsArrayBuffer(file);
         }
 
-        const reader = new FileReader();
-        reader.onload = function (e) {
-          const data = new Uint8Array(e.target.result);
-          const workbook = XLSX.read(data, { type: "array" });
-          const worksheet = workbook.Sheets[workbook.SheetNames[0]];
-          const jsonData = XLSX.utils.sheet_to_json(worksheet);
+        function loadUniqueHeaders() {
+          const fileInput = document.getElementById("uniqueValueFileInput");
+          const file = fileInput.files[0];
 
-          // Dátumok számlálása
-          const months = new Set();
-          jsonData.forEach((row) => {
-            if (row[dateHeader]) {
-              const date = new Date(row[dateHeader]);
-              months.add(date.getMonth() + 1); // 1-indexed months
-            }
-          });
+          if (!file) return;
 
-          document.getElementById(
-            "monthCountResult"
-          ).textContent = `Talált hónapok: ${Array.from(months).join(", ")}`;
-        };
+          const reader = new FileReader();
+          reader.onload = function (e) {
+            const data = new Uint8Array(e.target.result);
+            const workbook = XLSX.read(data, { type: "array" });
+            const worksheet = workbook.Sheets[workbook.SheetNames[0]];
+            const jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
+            const headers = jsonData[0];
 
-        reader.readAsArrayBuffer(file);
-      }
-// Hónap kalkulátor funkció
-function calculateMonths() {
-    const fileInput = document.getElementById('monthFileInput');
-    const headerName = document.getElementById('dateHeaderSelect').value;
-    const sampleSize = parseInt(document.getElementById('sampleSizeInput').value, 10);
+            const select = document.getElementById("uniqueHeaderSelect");
+            select.innerHTML =
+              '<option value="">-- Choose a header --</option>';
 
-    if (!fileInput.files[0]) {
-        alert("Kérjük, válasszon egy Excel fájlt!");
-        return;
-    }
+            headers.forEach((header) => {
+              const option = document.createElement("option");
+              option.value = header;
+              option.textContent = header;
+              select.appendChild(option);
+            });
+          };
 
-    if (!headerName) {
-        alert("Kérjük, válasszon egy dátumot tartalmazó oszlopot!");
-        return;
-    }
+          reader.readAsArrayBuffer(file);
+        }
 
-    const reader = new FileReader();
-    reader.onload = function (e) {
-        const data = new Uint8Array(e.target.result);
-        const workbook = XLSX.read(data, { type: 'array' });
-        const worksheet = workbook.Sheets[workbook.SheetNames[0]];
-        const jsonData = XLSX.utils.sheet_to_json(worksheet);
+        function countUniqueValues() {
+          const fileInput = document.getElementById("uniqueValueFileInput");
+          const headerName =
+            document.getElementById("uniqueHeaderSelect").value;
 
-        // Ellenőrizzük, hogy a megadott oszlop létezik
-        const dateColumn = jsonData.map(row => row[headerName]).filter(Boolean);
-        if (dateColumn.length === 0) {
-            alert("A megadott oszlop nem található vagy üres!");
+          if (!fileInput.files[0]) {
+            alert("Please choose an Excel file!");
             return;
-        }
+          }
 
-        // Számoljuk meg a hónapokból származó sorokat
-        const monthCounts = {};
-        dateColumn.forEach(dateValue => {
-            let date;
-            
-            // Ellenőrizzük, hogy a dátum szám-e (Excel formátum)
-            if (typeof dateValue === 'number') {
-                date = excelDateToJSDate(dateValue);
-            } else {
-                date = new Date(dateValue);
-            }
+          if (!headerName) {
+            alert("Please select a column!");
+            return;
+          }
 
-            if (!isNaN(date)) {
-                const month = date.toLocaleString('default', { month: 'long' });
-                monthCounts[month] = (monthCounts[month] || 0) + 1;
-            }
-        });
+          const reader = new FileReader();
+          reader.onload = function (e) {
+            const data = new Uint8Array(e.target.result);
+            const workbook = XLSX.read(data, { type: "array" });
+            const worksheet = workbook.Sheets[workbook.SheetNames[0]];
+            const jsonData = XLSX.utils.sheet_to_json(worksheet);
 
-        // Kiválasztási arányok számítása
-        const totalRows = dateColumn.length;
-        const sampleResults = Object.entries(monthCounts).map(([month, count]) => {
-            return { month, count, requiredCount: 0 };
-        });
-
-        // Ellenőrizzük, hogy a mintanagyság elegendő legyen
-        const totalMonths = sampleResults.length;
-
-        if (sampleSize < totalMonths) {
-            sampleResults.sort((a, b) => b.count - a.count);
-            for (let i = 0; i < sampleSize; i++) {
-                sampleResults[i].requiredCount = 1;
-            }
-        } else {
-            let remaining = sampleSize;
-            sampleResults.forEach(monthData => {
-                monthData.requiredCount = 1;
-                remaining--;
+            const uniqueValues = new Set();
+            jsonData.forEach((row) => {
+              if (row[headerName] !== undefined && row[headerName] !== null) {
+                uniqueValues.add(row[headerName]);
+              }
             });
 
-            if (remaining > 0) {
-                sampleResults.sort((a, b) => b.count - a.count);
-                for (let i = 0; i < remaining; i++) {
-                    sampleResults[i % totalMonths].requiredCount++;
-                }
-            }
+            document.getElementById(
+              "uniqueCountResult"
+            ).textContent = `Unique values count: ${uniqueValues.size}`;
+          };
+
+          reader.readAsArrayBuffer(fileInput.files[0]);
         }
 
-        // Kimenet megjelenítése
-        const finalOutput = sampleResults.map(({ month, count, requiredCount }) => {
-            return `${month}: ${count} sor, szükséges kiválasztás: ${requiredCount}`;
-        }).join('<br>');
+        function compareFiles() {
+          const rawFileInput = document.getElementById("rawFileInput");
+          const filteredFileInput =
+            document.getElementById("filteredFileInput");
 
-        document.getElementById('monthCountResult').innerHTML = `<strong>Kiválasztott sorok:</strong><br>${finalOutput}`;
-    };
+          const rawFile = rawFileInput.files[0];
+          const filteredFile = filteredFileInput.files[0];
 
-    reader.readAsArrayBuffer(fileInput.files[0]);
-}
+          if (!rawFile || !filteredFile) {
+            alert("Please choose both Excel files!");
+            return;
+          }
 
-// Excel dátumot JavaScript dátumra konvertáló függvény
-function excelDateToJSDate(excelDate) {
-    const jsDate = new Date((excelDate - (25567 + 1)) * 86400 * 1000);
-    return jsDate;
-}
+          const readerRaw = new FileReader();
+          const readerFiltered = new FileReader();
 
+          readerRaw.onload = function (eRaw) {
+            const rawData = new Uint8Array(eRaw.target.result);
+            const workbookRaw = XLSX.read(rawData, { type: "array" });
+            const worksheetRaw = workbookRaw.Sheets[workbookRaw.SheetNames[0]];
+            const jsonDataRaw = XLSX.utils.sheet_to_json(worksheetRaw, {
+              header: 1,
+            });
 
-      // Eredmények letöltése TXT fájlként
-      function downloadResults() {
-        const resultsElement = document.getElementById("monthCountResult");
-
-        // Ellenőrizzük, hogy van-e tartalom az eredményben
-        if (!resultsElement.innerHTML.trim()) {
-          alert("Nincsenek elérhető eredmények a letöltéshez.");
-          return;
-        }
-
-        // Kivonjuk a hónapok és a szükséges kiválasztások szövegét
-        const results = resultsElement.innerHTML
-          .replace(/<strong>Kiválasztott sorok:<\/strong><br>/, "") // Eltávolítjuk a fejlécet
-          .replace(/<br>/g, "\n") // Az <br> tageket új sorokra cseréljük
-          .replace(/: /g, ": ") // A formázás (üres helyek) megtartása
-          .trim(); // Töröljük a felesleges szóközöket
-
-        // Létrehozunk egy Blob-ot az eredményekből
-        const blob = new Blob([results], { type: "text/plain" });
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement("a");
-        a.href = url;
-        a.download = "eredmények.txt";
-        document.body.appendChild(a);
-        a.click();
-        document.body.removeChild(a);
-        URL.revokeObjectURL(url);
-      }
-
-      // Excel fájlok egyesítése
-      function mergeFiles() {
-        const fileInput = document.getElementById("mergeFileInput");
-        const files = fileInput.files;
-
-        if (files.length < 2) {
-          alert("Kérjük, válasszon legalább két Excel fájlt az egyesítéshez!");
-          return;
-        }
-
-        const mergedData = [];
-        const reader = new FileReader();
-        let fileIndex = 0;
-
-        const readNextFile = () => {
-          if (fileIndex < files.length) {
-            reader.onload = function (e) {
-              const data = new Uint8Array(e.target.result);
-              const workbook = XLSX.read(data, { type: "array" });
-              const worksheet = workbook.Sheets[workbook.SheetNames[0]];
-              const jsonData = XLSX.utils.sheet_to_json(worksheet, {
-                header: 1,
+            readerFiltered.onload = function (eFiltered) {
+              const filteredData = new Uint8Array(eFiltered.target.result);
+              const workbookFiltered = XLSX.read(filteredData, {
+                type: "array",
               });
+              const worksheetFiltered =
+                workbookFiltered.Sheets[workbookFiltered.SheetNames[0]];
+              const jsonDataFiltered = XLSX.utils.sheet_to_json(
+                worksheetFiltered,
+                { header: 1 }
+              );
 
-              if (fileIndex === 0) {
-                // Copy header from the first file
-                mergedData.push(jsonData[0]); // Add header
+              // Comparison logic
+              const differences = [];
+              for (
+                let i = 0;
+                i < Math.max(jsonDataRaw.length, jsonDataFiltered.length);
+                i++
+              ) {
+                const rawRow = jsonDataRaw[i] || [];
+                const filteredRow = jsonDataFiltered[i] || [];
+
+                if (JSON.stringify(rawRow) !== JSON.stringify(filteredRow)) {
+                  differences.push({
+                    raw: rawRow,
+                    filtered: filteredRow,
+                  });
+                }
               }
 
-              // Add data from subsequent files, excluding the header
-              for (let i = 1; i < jsonData.length; i++) {
-                mergedData.push(jsonData[i]);
-              }
-
-              fileIndex++;
-              readNextFile(); // Read the next file
+              document.getElementById("compareResult").innerHTML =
+                differences.length > 0
+                  ? `Number of differences: ${differences.length}`
+                  : "No differences.";
             };
 
-            reader.readAsArrayBuffer(files[fileIndex]);
-          } else {
-            // Generate merged Excel file
-            const newWorkbook = XLSX.utils.book_new();
-            const newWorksheet = XLSX.utils.aoa_to_sheet(mergedData);
-            XLSX.utils.book_append_sheet(
-              newWorkbook,
-              newWorksheet,
-              "Merged Data"
-            );
+            readerFiltered.readAsArrayBuffer(filteredFile);
+          };
 
-            // Save the merged file
-            XLSX.writeFile(newWorkbook, "merged_data.xlsx");
-            document.getElementById("mergeResult").textContent =
-              "A fájlok sikeresen egyesítve lettek!";
-          }
-        };
-
-        readNextFile(); // Start reading the files
-      }
-
-      // Oszlopfejlécek betöltése a hónapkalkulátorhoz
-      function loadHeaders() {
-        const fileInput = document.getElementById("monthFileInput");
-        const file = fileInput.files[0];
-
-        if (!file) {
-          return;
+          readerRaw.readAsArrayBuffer(rawFile);
         }
 
-        const reader = new FileReader();
-        reader.onload = function (e) {
-          const data = new Uint8Array(e.target.result);
-          const workbook = XLSX.read(data, { type: "array" });
-          const worksheet = workbook.Sheets[workbook.SheetNames[0]];
-          const jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
-          const headers = jsonData[0]; // Az első sor az oszlopfejléceket tartalmazza
+        function calculateMonths() {
+          const fileInput = document.getElementById("monthFileInput");
+          const file = fileInput.files[0];
+          const dateHeader = document.getElementById("dateHeaderSelect").value;
+          const sampleSize = parseInt(
+            document.getElementById("sampleSizeInput").value,
+            10
+          );
 
-          const select = document.getElementById("dateHeaderSelect");
-          select.innerHTML =
-            '<option value="">-- Válasszon oszlopot --</option>'; // Clear previous options
+          if (!file || !dateHeader) {
+            alert("Please choose an Excel file and a column!");
+            return;
+          }
 
-          headers.forEach((header, index) => {
-            const option = document.createElement("option");
-            option.value = header;
-            option.textContent = header;
-            select.appendChild(option);
-          });
-        };
+          const reader = new FileReader();
+          reader.onload = function (e) {
+            const data = new Uint8Array(e.target.result);
+            const workbook = XLSX.read(data, { type: "array" });
+            const worksheet = workbook.Sheets[workbook.SheetNames[0]];
+            const jsonData = XLSX.utils.sheet_to_json(worksheet);
 
-        reader.readAsArrayBuffer(file);
-      }
+            const months = new Set();
+            jsonData.forEach((row) => {
+              if (row[dateHeader]) {
+                const date = new Date(row[dateHeader]);
+                months.add(date.getMonth() + 1); // 1-indexed months
+              }
+            });
 
-      // Törlés funkció
-      function clearAll() {
-        document.getElementById("rowCounterFileInput").value = "";
-        document.getElementById("rowCountResult").textContent = "";
-        document.getElementById("rawFileInput").value = "";
-        document.getElementById("filteredFileInput").value = "";
-        document.getElementById("compareResult").textContent = "";
-        document.getElementById("monthFileInput").value = "";
-        document.getElementById("dateHeaderSelect").value = "";
-        document.getElementById("monthCountResult").textContent = "";
-        document.getElementById("mergeFileInput").value = "";
-        document.getElementById("mergeResult").textContent = "";
-      }
-    </script>
+            document.getElementById(
+              "monthCountResult"
+            ).textContent = `Found months: ${Array.from(months).join(", ")}`;
+          };
+
+          reader.readAsArrayBuffer(file);
+        }
+
+        function calculateMonths() {
+          const fileInput = document.getElementById("monthFileInput");
+          const headerName = document.getElementById("dateHeaderSelect").value;
+          const sampleSize = parseInt(
+            document.getElementById("sampleSizeInput").value,
+            10
+          );
+
+          if (!fileInput.files[0]) {
+            alert("Please choose an Excel file!");
+            return;
+          }
+
+          if (!headerName) {
+            alert("Please select a column containing a date!");
+            return;
+          }
+
+          const reader = new FileReader();
+          reader.onload = function (e) {
+            const data = new Uint8Array(e.target.result);
+            const workbook = XLSX.read(data, { type: "array" });
+            const worksheet = workbook.Sheets[workbook.SheetNames[0]];
+            const jsonData = XLSX.utils.sheet_to_json(worksheet);
+            const dateColumn = jsonData
+              .map((row) => row[headerName])
+              .filter(Boolean);
+            if (dateColumn.length === 0) {
+              alert("The selected column not found or empty!");
+              return;
+            }
+
+            const monthCounts = {};
+            dateColumn.forEach((dateValue) => {
+              let date;
+
+              if (typeof dateValue === "number") {
+                date = excelDateToJSDate(dateValue);
+              } else {
+                date = new Date(dateValue);
+              }
+
+              if (!isNaN(date)) {
+                const month = date.toLocaleString("default", { month: "long" });
+                monthCounts[month] = (monthCounts[month] || 0) + 1;
+              }
+            });
+
+            const totalRows = dateColumn.length;
+            const sampleResults = Object.entries(monthCounts).map(
+              ([month, count]) => {
+                return { month, count, requiredCount: 0 };
+              }
+            );
+
+            const totalMonths = sampleResults.length;
+
+            if (sampleSize < totalMonths) {
+              sampleResults.sort((a, b) => b.count - a.count);
+              for (let i = 0; i < sampleSize; i++) {
+                sampleResults[i].requiredCount = 1;
+              }
+            } else {
+              let remaining = sampleSize;
+              sampleResults.forEach((monthData) => {
+                monthData.requiredCount = 1;
+                remaining--;
+              });
+
+              if (remaining > 0) {
+                sampleResults.sort((a, b) => b.count - a.count);
+                for (let i = 0; i < remaining; i++) {
+                  sampleResults[i % totalMonths].requiredCount++;
+                }
+              }
+            }
+
+            const finalOutput = sampleResults
+              .map(({ month, count, requiredCount }) => {
+                return `${month}: ${count} lines, needed selection: ${requiredCount}`;
+              })
+              .join("<br>");
+
+            document.getElementById(
+              "monthCountResult"
+            ).innerHTML = `<strong>Choosen lines:</strong><br>${finalOutput}`;
+          };
+
+          reader.readAsArrayBuffer(fileInput.files[0]);
+        }
+
+        function excelDateToJSDate(excelDate) {
+          const jsDate = new Date((excelDate - (25567 + 1)) * 86400 * 1000);
+          return jsDate;
+        }
+
+        function downloadResults() {
+          const resultsElement = document.getElementById("monthCountResult");
+
+          if (!resultsElement.innerHTML.trim()) {
+            alert("There are no results available for download.");
+            return;
+          }
+
+          const results = resultsElement.innerHTML
+            .replace(/<strong>Choosen lines:<\/strong><br>/, "")
+            .replace(/<br>/g, "\n")
+            .replace(/: /g, ": ")
+            .trim();
+
+          const blob = new Blob([results], { type: "text/plain" });
+          const url = URL.createObjectURL(blob);
+          const a = document.createElement("a");
+          a.href = url;
+          a.download = "eredmények.txt";
+          document.body.appendChild(a);
+          a.click();
+          document.body.removeChild(a);
+          URL.revokeObjectURL(url);
+        }
+
+        function mergeFiles() {
+          const fileInput = document.getElementById("mergeFileInput");
+          const files = fileInput.files;
+
+          if (files.length < 2) {
+            alert("Please choose at least two Excel files!");
+            return;
+          }
+
+          const mergedData = [];
+          const reader = new FileReader();
+          let fileIndex = 0;
+
+          const readNextFile = () => {
+            if (fileIndex < files.length) {
+              reader.onload = function (e) {
+                const data = new Uint8Array(e.target.result);
+                const workbook = XLSX.read(data, { type: "array" });
+                const worksheet = workbook.Sheets[workbook.SheetNames[0]];
+                const jsonData = XLSX.utils.sheet_to_json(worksheet, {
+                  header: 1,
+                });
+
+                if (fileIndex === 0) {
+                  mergedData.push(jsonData[0]);
+                }
+
+                for (let i = 1; i < jsonData.length; i++) {
+                  mergedData.push(jsonData[i]);
+                }
+
+                fileIndex++;
+                readNextFile();
+              };
+
+              reader.readAsArrayBuffer(files[fileIndex]);
+            } else {
+              const newWorkbook = XLSX.utils.book_new();
+              const newWorksheet = XLSX.utils.aoa_to_sheet(mergedData);
+              XLSX.utils.book_append_sheet(
+                newWorkbook,
+                newWorksheet,
+                "Merged Data"
+              );
+
+              XLSX.writeFile(newWorkbook, "merged_data.xlsx");
+              document.getElementById("mergeResult").textContent =
+                "Files were successfully merged!";
+            }
+          };
+
+          readNextFile();
+        }
+
+        function loadHeaders() {
+          const fileInput = document.getElementById("monthFileInput");
+          const file = fileInput.files[0];
+
+          if (!file) {
+            return;
+          }
+
+          const reader = new FileReader();
+          reader.onload = function (e) {
+            const data = new Uint8Array(e.target.result);
+            const workbook = XLSX.read(data, { type: "array" });
+            const worksheet = workbook.Sheets[workbook.SheetNames[0]];
+            const jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
+            const headers = jsonData[0];
+
+            const select = document.getElementById("dateHeaderSelect");
+            select.innerHTML =
+              '<option value="">-- Choose a cloumn --</option>';
+
+            headers.forEach((header, index) => {
+              const option = document.createElement("option");
+              option.value = header;
+              option.textContent = header;
+              select.appendChild(option);
+            });
+          };
+
+          reader.readAsArrayBuffer(file);
+        }
+
+        function clearAll() {
+          document.getElementById("rowCounterFileInput").value = "";
+          document.getElementById("rowCountResult").textContent = "";
+          document.getElementById("rawFileInput").value = "";
+          document.getElementById("filteredFileInput").value = "";
+          document.getElementById("compareResult").textContent = "";
+          document.getElementById("monthFileInput").value = "";
+          document.getElementById("dateHeaderSelect").value = "";
+          document.getElementById("monthCountResult").textContent = "";
+          document.getElementById("mergeFileInput").value = "";
+          document.getElementById("mergeResult").textContent = "";
+          document.getElementById("uniqueValueFileInput").value = "";
+          document.getElementById("uniqueCountResult").textContent = "";
+        }
+
+        document.getElementById("current-year").textContent =
+          new Date().getFullYear();
+      </script>
+    </div>
   </body>
 </html>
