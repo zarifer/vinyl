@@ -183,6 +183,7 @@
         columnSelect2.disabled = false;
         compareButton.disabled = false;
       }
+
       function compareExcelFiles() {
         const col1Index = parseInt(
           document.getElementById("columnSelect1").value
@@ -196,14 +197,30 @@
           return;
         }
 
+        const normalize = (value) => {
+          if (!value) return "";
+          return value
+            .toString()
+            .toLowerCase()
+            .replace(/\s*\(.*?\)|\s*-.*/g, "")
+            .trim();
+        };
+
         const data1Set = new Set(
-          jsonData1.slice(1).map((row) => `${row[col1Index]}|${row[col2Index]}`)
+          jsonData1
+            .slice(1)
+            .map(
+              (row) =>
+                `${normalize(row[col1Index])}|${normalize(row[col2Index])}`
+            )
         );
 
         const newRowsInSecondFile = [];
 
         jsonData2.slice(1).forEach((row) => {
-          const key = `${row[col1Index]}|${row[col2Index]}`;
+          const key = `${normalize(row[col1Index])}|${normalize(
+            row[col2Index]
+          )}`;
           if (!data1Set.has(key)) {
             newRowsInSecondFile.push(row);
           }
