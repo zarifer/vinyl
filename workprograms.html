@@ -1,0 +1,245 @@
+<!DOCTYPE html>
+<html lang="hu">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Workprograms</title>
+    <style>
+      body {
+        font-family: Arial, sans-serif;
+        background-color: #f4f4f4;
+        color: #333;
+        margin: 0;
+        padding: 20px;
+      }
+      h1 {
+        text-align: center;
+        color: #0056b3;
+      }
+      .container {
+        max-width: 600px;
+        margin: auto;
+        padding: 20px;
+        background: white;
+        border-radius: 8px;
+        box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+      }
+      .navbar {
+        background-color: #0056b3;
+        padding: 10px;
+        text-align: center;
+      }
+
+      .navbar a {
+        color: white;
+        padding: 14px 20px;
+        text-decoration: none;
+        font-size: 1em;
+        margin: 0 10px;
+      }
+
+      .navbar a:hover {
+        background-color: #003d80;
+        border-radius: 4px;
+      }
+
+      input[type="file"],
+      button {
+        width: 100%;
+        padding: 10px;
+        margin: 10px 0;
+        border: 1px solid #ddd;
+        border-radius: 4px;
+        box-sizing: border-box;
+        transition: border-color 0.3s;
+      }
+      input[type="file"]:hover,
+      button:hover {
+        border-color: #0056b3;
+      }
+      button {
+        background-color: #0056b3;
+        color: white;
+        border: none;
+        cursor: pointer;
+      }
+      button:disabled {
+        background-color: #ccc;
+        cursor: not-allowed;
+      }
+      #output {
+        margin-top: 20px;
+        padding: 10px;
+        border: 1px solid #0056b3;
+        border-radius: 4px;
+        background: #e7f3ff;
+        overflow-x: auto;
+      }
+      #output table {
+        width: 100%;
+        border-collapse: collapse;
+      }
+      #output th,
+      #output td {
+        border: 1px solid #0056b3;
+        padding: 8px;
+        text-align: left;
+      }
+      #output th {
+        background-color: #0056b3;
+        color: white;
+      }
+      #loading {
+        display: none;
+        text-align: center;
+        margin-top: 20px;
+      }
+
+      .loader {
+        border: 6px solid #f3f3f3;
+        border-top: 6px solid #0056b3;
+        border-radius: 50%;
+        width: 40px;
+        height: 40px;
+        animation: spin 1s linear infinite;
+      }
+
+      @keyframes spin {
+        0% {
+          transform: rotate(0deg);
+        }
+        100% {
+          transform: rotate(360deg);
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="navbar">
+      <a href="sample_selection.html">Sample Selection</a>
+      <a href="delta_selection.html">Delta Selection</a>
+      <a href="calculation_helper.html">Calculation Helpers</a>
+      <a href="workprograms.html">Workprograms</a>
+    </div>
+    <div class="container">
+      <h1>Linux root access check</h1>
+      <input type="file" id="logFileInput" accept=".log,.txt" />
+      <button onclick="processLogFile()">Proccess file</button>
+      <div id="output">The results will display here.</div>
+      <div id="loading">
+        <div class="loader"></div>
+        <p>Loading file...</p>
+      </div>
+    </div>
+
+    <script>
+      function processLogFile() {
+        const fileInput = document.getElementById("logFileInput");
+        const file = fileInput.files[0];
+        const loading = document.getElementById("loading");
+        const output = document.getElementById("output");
+
+        if (!file) {
+          alert("Please, choose a file first!");
+          return;
+        }
+
+        // Mutasd a loading animációt, és ürítsd az output-ot
+        loading.style.display = "block";
+        output.innerHTML = "";
+
+        const reader = new FileReader();
+        reader.onload = function (e) {
+          const content = e.target.result;
+
+          // Feldolgozás megkezdése után rejtsd el a loading animációt
+          loading.style.display = "none";
+          parseLogFile(content);
+        };
+
+        reader.onerror = function () {
+          loading.style.display = "none";
+          alert("An error occurred while reading the file.");
+        };
+
+        reader.readAsText(file);
+      }
+
+      function parseLogFile(content) {
+        const lines = content.split("\n");
+        const regexes = [
+          /(\w{3} \d{2} \d{2}:\d{2}:\d{2}) .*? root:.*?user=(\w+)/,
+          /(\w{3} \d{2} \d{2}:\d{2}:\d{2}) .*?sudo:.*?COMMAND=/,
+          /(\w{3} \d{2} \d{2}:\d{2}:\d{2}) .*?su:.*?session opened for user root by (\w+)/,
+        ];
+        const results = [];
+
+        lines.forEach((line) => {
+          regexes.forEach((regex) => {
+            const match = regex.exec(line);
+            if (match) {
+              results.push({ date: match[1], user: match[2] || "unknown" });
+            }
+          });
+        });
+
+        displayResults(results);
+      }
+
+      function parseLogFile(content) {
+        const lines = content.split("\n");
+        const regexes = [
+          /(\w{3} \d{2} \d{2}:\d{2}:\d{2}) .*? root:.*?user=(\w+)/, // root with user=
+          /(\w{3} \d{2} \d{2}:\d{2}:\d{2}) .*?sudo:.*?COMMAND=/, // sudo command
+          /(\w{3} \d{2} \d{2}:\d{2}:\d{2}) .*?su:.*?session opened for user root by (\w+)/, // su session
+        ];
+        const results = [];
+
+        lines.forEach((line) => {
+          regexes.forEach((regex) => {
+            const match = regex.exec(line);
+            if (match) {
+              results.push({ date: match[1], user: match[2] || "unknown" });
+            }
+          });
+        });
+
+        displayResults(results);
+      }
+
+      function displayResults(results) {
+        const output = document.getElementById("output");
+        output.innerHTML = "";
+
+        if (results.length === 0) {
+          output.textContent = "Cannot found root access in the log.";
+          return;
+        }
+
+        const table = document.createElement("table");
+        const headerRow = document.createElement("tr");
+
+        const headers = ["Time", "User"];
+        headers.forEach((headerText) => {
+          const th = document.createElement("th");
+          th.textContent = headerText;
+          headerRow.appendChild(th);
+        });
+
+        table.appendChild(headerRow);
+
+        results.forEach((entry) => {
+          const row = document.createElement("tr");
+          const dateCell = document.createElement("td");
+          dateCell.textContent = entry.date;
+          const userCell = document.createElement("td");
+          userCell.textContent = entry.user;
+          row.appendChild(dateCell);
+          row.appendChild(userCell);
+          table.appendChild(row);
+        });
+
+        output.appendChild(table);
+      }
+    </script>
+  </body>
+</html>
