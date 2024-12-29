@@ -143,7 +143,6 @@
           return;
         }
 
-        // Mutasd a loading animációt, és ürítsd az output-ot
         loading.style.display = "block";
         output.innerHTML = "";
 
@@ -151,7 +150,6 @@
         reader.onload = function (e) {
           const content = e.target.result;
 
-          // Feldolgozás megkezdése után rejtsd el a loading animációt
           loading.style.display = "none";
           parseLogFile(content);
         };
